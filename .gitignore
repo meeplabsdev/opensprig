@@ -1,0 +1,6 @@
+# Build artifacts
+build/
+
+# Conversion script
+convert/*
+!convert/convert.sh
