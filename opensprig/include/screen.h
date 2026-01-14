@@ -2,6 +2,7 @@
 #define OPENSPRIG_SCREEN_H
 
 #include <cstdint>
+#include <font.h>
 #include <functional>
 #include <string>
 

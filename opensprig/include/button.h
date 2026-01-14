@@ -1,6 +1,11 @@
 #ifndef OPENSPRIG_BUTTON_H
 #define OPENSPRIG_BUTTON_H
 
+#include <hardware/gpio.h>
+#include <hardware/structs/ioqspi.h>
+#include <hardware/structs/sio.h>
+#include <hardware/sync.h>
+#include <hardware/timer.h>
 #include <pico/types.h>
 
 #define HOLD_TIME_US 1000000

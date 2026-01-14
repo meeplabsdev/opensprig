@@ -6,6 +6,9 @@ add_library(opensprig
     src/hardware/screen.cpp
     src/hardware/speaker.cpp
     src/hardware/storage.cpp
+    src/ui/window.cpp
+    src/ui/widget.cpp
+    src/ui/widgets/text.cpp
 )
 
 target_compile_definitions(opensprig PRIVATE

@@ -1,8 +1,6 @@
 #include "screen.h"
 #include "st7735.h"
 
-#include <font.h>
-
 Screen::Screen() {
   draw_flood(0);
   init_screen_tft();

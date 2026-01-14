@@ -1,11 +1,5 @@
 #include "button.h"
 
-#include <hardware/gpio.h>
-#include <hardware/structs/ioqspi.h>
-#include <hardware/structs/sio.h>
-#include <hardware/sync.h>
-#include <hardware/timer.h>
-
 // https://github.com/raspberrypi/pico-examples/blob/master/picoboard/button/button.c
 bool __no_inline_not_in_flash_func(get_bootsel_button)() {
   bool state = false;

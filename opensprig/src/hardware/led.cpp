@@ -1,10 +1,5 @@
 #include "led.h"
 
-#include <hardware/gpio.h>
-#include <hardware/pwm.h>
-#include <hardware/timer.h>
-#include <pico/cyw43_arch.h>
-
 static struct repeating_timer _animate_task;
 void LED::animate() {
   uint32_t now = time_us_32();

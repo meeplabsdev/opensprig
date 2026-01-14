@@ -1,7 +1,11 @@
 #ifndef OPENSPRIG_SPEAKER_H
 #define OPENSPRIG_SPEAKER_H
 
+#include <cmath>
 #include <cstdint>
+#include <hardware/adc.h>
+#include <pico/audio.h>
+#include <pico/audio_i2s.h>
 
 #define SINE_WAVE_TABLE_LEN 2048
 

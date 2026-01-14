@@ -1,6 +1,7 @@
 #ifndef OPENSPRIG_STORAGE_H
 #define OPENSPRIG_STORAGE_H
 
+#include <cstring>
 #include <ff.h>
 
 class Storage {

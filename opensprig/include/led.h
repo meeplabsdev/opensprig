@@ -1,6 +1,10 @@
 #ifndef OPENSPRIG_LED_H
 #define OPENSPRIG_LED_H
 
+#include <hardware/gpio.h>
+#include <hardware/pwm.h>
+#include <hardware/timer.h>
+#include <pico/cyw43_arch.h>
 #include <pico/types.h>
 
 #define MAX_LEVEL 100u
