@@ -13,8 +13,6 @@ class Speaker {
   int16_t sine_wave_table[SINE_WAVE_TABLE_LEN];
 
 public:
-  explicit Speaker();
-  ~Speaker();
   void sine(uint32_t step, uint32_t volume);
 };
 

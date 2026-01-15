@@ -9,8 +9,6 @@ class Storage {
   FATFS fs;
 
 public:
-  explicit Storage();
-  ~Storage();
   bool is_ready();
   FRESULT mount();
   FRESULT unmount();

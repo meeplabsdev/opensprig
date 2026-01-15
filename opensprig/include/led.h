@@ -26,8 +26,8 @@ class LED {
   void animate();
 
 public:
-  explicit LED(LED_TYPE pin, bool pwm);
-  ~LED();
+  LED(LED_TYPE pin, bool pwm);
+
   uint get_brightness();
   void set_brightness(bool level);
   void set_brightness(uint level);

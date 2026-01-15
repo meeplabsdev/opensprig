@@ -29,8 +29,8 @@ class Button {
   uint64_t held_started;
 
 public:
-  explicit Button(BUTTON_TYPE pin);
-  ~Button();
+  Button(BUTTON_TYPE pin);
+
   bool is_pressed();
   bool is_long_pressed();
   bool was_pressed();

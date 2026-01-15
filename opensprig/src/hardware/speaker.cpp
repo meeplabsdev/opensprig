@@ -30,7 +30,7 @@ Speaker::Speaker() {
         32767 * cosf(i * 2 * (float)(M_PI / SINE_WAVE_TABLE_LEN));
 }
 
-Speaker::~Speaker() {}
+Speaker::~Speaker() { audio_i2s_set_enabled(false); }
 
 void Speaker::sine(uint32_t step, uint32_t volume) {
   struct audio_buffer *buffer = take_audio_buffer(audio_bufpool, false);

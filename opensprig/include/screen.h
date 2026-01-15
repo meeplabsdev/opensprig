@@ -16,8 +16,6 @@ class Screen {
 public:
   uint16_t screen_buf[FRAME_SIZE];
 
-  explicit Screen();
-  ~Screen();
   void blit();
   void set_backlight(bool enabled);
   void set_pixel(uint16_t colour, int x, int y);

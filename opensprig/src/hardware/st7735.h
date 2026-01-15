@@ -138,25 +138,6 @@ static void fill_send(uint16_t pixel) {
 static void fill_finish(void) { cs_high(); }
 
 void init_screen_tft() {
-  // spi comms
-  spi_init(PORT, 30000000);
-
-  gpio_set_function(RX, GPIO_FUNC_SPI);
-  gpio_set_function(TX, GPIO_FUNC_SPI);
-  gpio_set_function(CLK, GPIO_FUNC_SPI);
-
-  gpio_init(CS);
-  gpio_set_dir(CS, GPIO_OUT);
-  gpio_put(CS, 1); // active-low
-
-  gpio_init(DC);
-  gpio_set_dir(DC, GPIO_OUT);
-  gpio_put(DC, 0); // active-low
-
-  gpio_init(RST);
-  gpio_set_dir(RST, GPIO_OUT);
-  gpio_put(RST, 0); // active-low
-
   reset();
   dc_low();
 
