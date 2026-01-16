@@ -13,6 +13,9 @@ if [ -z "$1" ]; then
         -f target/rp2040.cfg \
         -c "adapter speed 5000; program firmware.elf verify reset exit"
 else
-    cmake "../examples/$1"
+    mkdir -p "$1"
+    cd $1
+
+    cmake "../../examples/$1"
     make
 fi
