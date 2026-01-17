@@ -7,7 +7,7 @@ add_library(opensprig
     src/hardware/speaker.cpp
     src/hardware/storage.cpp
     src/ui/widget.cpp
-    src/ui/widgets/text.cpp
+    src/ui/widgets/label.cpp
 )
 
 target_compile_definitions(opensprig PRIVATE

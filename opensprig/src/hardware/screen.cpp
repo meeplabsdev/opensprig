@@ -61,6 +61,16 @@ void Screen::blit() {
 void Screen::set_backlight(bool enabled) { gpio_put(BACKLIGHT, enabled); }
 
 void Screen::set_pixel(uint16_t colour, int x, int y) {
+  if (x < 0)
+    x = 0;
+  else if (x >= FRAME_WIDTH)
+    x = FRAME_WIDTH - 1;
+
+  if (y < 0)
+    y = 0;
+  else if (y >= FRAME_HEIGHT)
+    y = FRAME_HEIGHT - 1;
+
   this->screen_buf[y + (FRAME_HEIGHT * x)] = colour;
 }
 
