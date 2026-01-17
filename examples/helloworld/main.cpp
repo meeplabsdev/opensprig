@@ -1,6 +1,8 @@
+#include <button.h>
 #include <pico/cyw43_arch.h>
 #include <pico/unique_id.h>
 #include <screen.h>
+#include <ui/widgets/label.h>
 
 #define FOREVER while (1)
 
@@ -1093,16 +1095,23 @@ void get_board_name(char *name_out) {
 }
 
 int main() {
+  Button button = Button(L_LEFT);
   Screen screen = Screen();
-
   screen.set_backlight(true);
-  screen.draw_text(RGB(255, 255, 255), "Hello, World!", 6, 6);
-  screen.blit();
 
   char name[32];
   get_board_name(name);
-  screen.draw_text(RGB(255, 255, 255), name, 6, 18);
-  screen.blit();
 
-  FOREVER tight_loop_contents();
+  LabelWidget helloLabel = LabelWidget(&screen, "Hello, World!");
+  LabelWidget nameLabel = LabelWidget(&screen, name);
+
+  FOREVER {
+    screen.blit();
+    screen.draw_flood(RGB(0, 0, 0));
+
+    if (button.is_pressed())
+      nameLabel.blit();
+    else
+      helloLabel.blit();
+  }
 }
