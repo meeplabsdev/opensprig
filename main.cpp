@@ -62,43 +62,27 @@ void err(const char *fmt, ...) {
   log(RGB(255, 100, 100), std::string(buffer));
 }
 
-static bool __not_in_flash_func(is_same_existing_program)(FIL *fp) {
-  uint8_t buffer[FLASH_SECTOR_SIZE] = {0};
-  size_t program_size = 0;
-  size_t len = 0;
-  while (f_read(fp, buffer, sizeof(buffer), &len) == FR_OK) {
-    if (len == 0)
-      break;
-
-    uint8_t *flash =
-        (uint8_t *)(XIP_BASE + SD_BOOT_FLASH_OFFSET + program_size);
-    if (memcmp(buffer, flash, len) != 0)
-      return false;
-    program_size += len;
-  }
-  return true;
-}
-
 static bool __not_in_flash_func(load_program)(const char *filename) {
   FIL fp;
-  if (f_open(&fp, filename, FA_READ) != FR_OK) {
+  FRESULT fr;
+
+  fr = f_open(&fp, filename, FA_READ);
+  if (fr != FR_OK) {
     err("Failed to open %s: %s", filename, strerror(errno));
     return false;
   }
 
-  if (is_same_existing_program(&fp)) {
-    // program is already up to date
-  }
+  FSIZE_t file_size = f_size(&fp);
+  log("File size: %lld", file_size);
 
-  long file_size = f_tell(&fp);
   if (file_size <= 0) {
-    err("Invalid size: %l", file_size);
+    err("Invalid size: %lld", file_size);
     f_close(&fp);
     return false;
   }
 
   if (file_size > MAX_APP_SIZE) {
-    err("File too large: %ld > %d", file_size, MAX_APP_SIZE);
+    err("File too large: %lld > %d", file_size, MAX_APP_SIZE);
     f_close(&fp);
     return false;
   }
@@ -113,7 +97,7 @@ static bool __not_in_flash_func(load_program)(const char *filename) {
   uint8_t buffer[FLASH_SECTOR_SIZE] = {0};
   size_t len = 0;
 
-  // Erase and program flash in FLASH_SECTOR_SIZE chunks
+  // Program flash in FLASH_SECTOR_SIZE chunks
   while (f_read(&fp, buffer, sizeof(buffer), &len) == FR_OK) {
     if (len == 0)
       break;
@@ -126,12 +110,11 @@ static bool __not_in_flash_func(load_program)(const char *filename) {
     }
 
     uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(SD_BOOT_FLASH_OFFSET + program_size, FLASH_SECTOR_SIZE);
+    flash_range_erase(SD_BOOT_FLASH_OFFSET + program_size, len);
     flash_range_program(SD_BOOT_FLASH_OFFSET + program_size, buffer, len);
     restore_interrupts(ints);
 
     program_size += len;
-
     screen.draw_rectangle(RGB(255, 255, 255), 6, 6 * line + 1,
                           148 * program_size / file_size, 4);
     screen.blit();
@@ -178,7 +161,6 @@ int main() {
   screen = Screen();
   storage = Storage();
 
-  screen.blit();
   screen.set_backlight(true);
 
   FRESULT fr_mount = storage.mount();
@@ -217,5 +199,5 @@ int main() {
     watchdog_reboot(0, 0, 0);
   }
 
-  return 0;
+  FOREVER tight_loop_contents();
 }
