@@ -1,5 +1,7 @@
 #include "storage.h"
 
+#include <cstring>
+
 Storage::Storage() {}
 
 Storage::~Storage() {}

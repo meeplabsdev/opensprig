@@ -1,5 +1,8 @@
 #include "speaker.h"
 
+#include <cmath>
+#include <pico/audio_i2s.h>
+
 static struct audio_buffer_pool *audio_bufpool;
 
 Speaker::Speaker() {

@@ -1,6 +1,8 @@
 #include "screen.h"
 #include "st7735.h"
 
+#include <font.h>
+
 Screen::Screen() {
   spi_init(PORT, 30000000);
 
@@ -20,8 +22,9 @@ Screen::Screen() {
   gpio_set_dir(RST, GPIO_OUT);
   gpio_put(RST, 0); // active-low
 
-  init_screen_tft();
   draw_flood(0);
+  init_screen_tft();
+  blit();
 
   gpio_set_function(BACKLIGHT, GPIO_FUNC_SIO);
   gpio_set_dir(BACKLIGHT, GPIO_OUT);
@@ -29,23 +32,23 @@ Screen::Screen() {
 }
 
 Screen::~Screen() {
-  spi_deinit(PORT);
+  // spi_deinit(PORT);
 
-  gpio_set_function(RX, GPIO_FUNC_NULL);
-  gpio_set_function(TX, GPIO_FUNC_NULL);
-  gpio_set_function(CLK, GPIO_FUNC_NULL);
-  gpio_set_function(CS, GPIO_FUNC_NULL);
-  gpio_set_function(DC, GPIO_FUNC_NULL);
-  gpio_set_function(RST, GPIO_FUNC_NULL);
-  gpio_set_function(BACKLIGHT, GPIO_FUNC_NULL);
+  // gpio_set_function(RX, GPIO_FUNC_NULL);
+  // gpio_set_function(TX, GPIO_FUNC_NULL);
+  // gpio_set_function(CLK, GPIO_FUNC_NULL);
+  // gpio_set_function(CS, GPIO_FUNC_NULL);
+  // gpio_set_function(DC, GPIO_FUNC_NULL);
+  // gpio_set_function(RST, GPIO_FUNC_NULL);
+  // gpio_set_function(BACKLIGHT, GPIO_FUNC_NULL);
 
-  gpio_set_pulls(RX, false, false);
-  gpio_set_pulls(TX, false, false);
-  gpio_set_pulls(CLK, false, false);
-  gpio_set_pulls(CS, false, false);
-  gpio_set_pulls(DC, false, false);
-  gpio_set_pulls(RST, false, false);
-  gpio_set_pulls(BACKLIGHT, false, false);
+  // gpio_set_pulls(RX, false, false);
+  // gpio_set_pulls(TX, false, false);
+  // gpio_set_pulls(CLK, false, false);
+  // gpio_set_pulls(CS, false, false);
+  // gpio_set_pulls(DC, false, false);
+  // gpio_set_pulls(RST, false, false);
+  // gpio_set_pulls(BACKLIGHT, false, false);
 }
 
 void Screen::blit() {

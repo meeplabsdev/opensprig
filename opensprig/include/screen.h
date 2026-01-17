@@ -1,9 +1,8 @@
 #ifndef OPENSPRIG_SCREEN_H
 #define OPENSPRIG_SCREEN_H
 
-#include <cstdint>
-#include <font.h>
 #include <functional>
+#include <pico/types.h>
 #include <string>
 
 #define BACKLIGHT 17
@@ -15,6 +14,9 @@
 class Screen {
 public:
   uint16_t screen_buf[FRAME_SIZE];
+
+  Screen();
+  ~Screen();
 
   void blit();
   void set_backlight(bool enabled);

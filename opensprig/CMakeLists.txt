@@ -6,7 +6,6 @@ add_library(opensprig
     src/hardware/screen.cpp
     src/hardware/speaker.cpp
     src/hardware/storage.cpp
-    src/ui/window.cpp
     src/ui/widget.cpp
     src/ui/widgets/text.cpp
 )
@@ -19,7 +18,7 @@ target_compile_definitions(opensprig PRIVATE
 )
 
 target_include_directories(opensprig PRIVATE src/def)
-target_include_directories(opensprig PUBLIC include)
+target_include_directories(opensprig PUBLIC include include/**)
 
 add_subdirectory(src/fatfs/src build)
 target_link_libraries(opensprig PUBLIC no-OS-FatFS-SD-SDIO-SPI-RPi-Pico)

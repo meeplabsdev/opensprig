@@ -1,14 +1,17 @@
 #ifndef OPENSPRIG_STORAGE_H
 #define OPENSPRIG_STORAGE_H
 
-#include <cstring>
 #include <ff.h>
+#include <pico/types.h>
 
 class Storage {
   bool mounted;
   FATFS fs;
 
 public:
+  Storage();
+  ~Storage();
+
   bool is_ready();
   FRESULT mount();
   FRESULT unmount();
