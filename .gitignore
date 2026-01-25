@@ -4,3 +4,6 @@ build/
 # Conversion script
 convert/*
 !convert/convert.sh
+
+# Added by cargo
+/target
