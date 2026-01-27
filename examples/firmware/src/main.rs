@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![cfg(not(test))]
 
 use opensprig_rs::bridge::button_bridge::*;
 use opensprig_rs::bridge::led_bridge::*;
