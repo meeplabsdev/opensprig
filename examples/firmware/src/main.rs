@@ -5,6 +5,7 @@
 use opensprig_rs::bridge::button_bridge::*;
 use opensprig_rs::bridge::led_bridge::*;
 use opensprig_rs::bridge::screen_bridge::*;
+use opensprig_rs::bridge::speaker_bridge::*;
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
@@ -17,10 +18,12 @@ pub extern "C" fn main() -> ! {
         let led: *mut LED = LED_new(LED_TYPE::STATUS, true);
         let button: *mut Button = Button_new(BUTTON_TYPE::L_LEFT);
         let screen: *mut Screen = Screen_new();
+        let speaker: *mut Speaker = Speaker_new();
 
         Screen_set_backlight(screen, true);
         Screen_draw_flood(screen, RGB(100, 100, 255));
         Screen_blit(screen);
+        Speaker_sine(speaker, 0x800000, 16);
 
         loop {
             let pressed = Button_is_pressed(button);

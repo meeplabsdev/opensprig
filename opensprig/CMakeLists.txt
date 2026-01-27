@@ -9,6 +9,7 @@ add_library(opensprig STATIC
     bridge/button_bridge.cpp
     bridge/led_bridge.cpp
     bridge/screen_bridge.cpp
+    bridge/speaker_bridge.cpp
 )
 
 target_compile_definitions(opensprig PRIVATE
