@@ -6,8 +6,6 @@ edition = "2024"
 [lib]
 path = "src/lib.rs"
 
-[dependencies]
-
 [profile.release]
 opt-level = "z"
 lto = true
