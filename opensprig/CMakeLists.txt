@@ -6,8 +6,9 @@ add_library(opensprig STATIC
     src/hardware/screen.cpp
     src/hardware/speaker.cpp
     src/hardware/storage.cpp
-    bridge/led_bridge.cpp
     bridge/button_bridge.cpp
+    bridge/led_bridge.cpp
+    bridge/screen_bridge.cpp
 )
 
 target_compile_definitions(opensprig PRIVATE
