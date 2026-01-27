@@ -7,29 +7,29 @@
 #define MAX_BRIGHTNESS 8192u
 
 enum LED_TYPE {
-  PICO,
-  STATUS = 28,
-  NETWORK = 4,
+    PICO,
+    STATUS = 28,
+    NETWORK = 4,
 };
 
 class LED {
-  int pin;
-  bool pwm;
-  uint16_t brightness;
-  uint16_t cur_brightness;
-  uint32_t animated_at;
+    int pin;
+    bool pwm;
+    uint16_t brightness;
+    uint16_t cur_brightness;
+    uint32_t animated_at;
 
-  void animate();
+    void animate();
 
-public:
-  LED(LED_TYPE pin, bool pwm);
-  ~LED();
+  public:
+    LED(LED_TYPE pin, bool pwm);
+    ~LED();
 
-  uint get_brightness();
-  void set_brightness(bool level);
-  void set_brightness(uint level);
-  void set_absolute_brightness(uint16_t level);
-  void blink();
+    uint get_brightness();
+    void set_brightness(bool level);
+    void set_brightness(uint level);
+    void set_absolute_brightness(uint16_t level);
+    void blink();
 };
 
 #endif // OPENSPRIG_LED_H
