@@ -40,7 +40,7 @@ FRESULT Storage::raw_write(FIL *file, char *text) {
     return f_write(file, text, strlen(text), &bytes_written);
 }
 
-FRESULT Storage::write(const char *const path, char *text) {
+FRESULT Storage::write(const char *path, char *text) {
     if (!is_ready())
         return FR_NOT_READY;
 
@@ -60,8 +60,8 @@ FRESULT Storage::raw_read(FIL *file, void *buffer, uint64_t buffer_size) {
     return f_read(file, buffer, buffer_size, &bytes_read);
 }
 
-FRESULT Storage::read(const char *const path, void *buffer,
-                      uint64_t buffer_size, uint64_t offset) {
+FRESULT Storage::read(const char *path, void *buffer, uint64_t buffer_size,
+                      uint64_t offset) {
     if (!is_ready())
         return FR_NOT_READY;
 
