@@ -1,7 +1,1 @@
-# Build artifacts
-build/
-target/
-
-# Conversion script
-convert/*
-!convert/convert.sh
+/build

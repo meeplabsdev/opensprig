@@ -1,0 +1,55 @@
+[package]
+name = "firmware"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "firmware"
+test = false
+bench = false
+
+[dependencies]
+cortex-m-rt = "0.7.5"
+defmt = "1.0.1"
+defmt-rtt = "1.1.0"
+static_cell = "2.1.1"
+
+[dependencies.cortex-m]
+version = "0.7.7"
+features = ["inline-asm"]
+
+[dependencies.cyw43]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "firmware-logs"]
+
+[dependencies.cyw43-pio]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt"]
+
+[dependencies.embassy-executor]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "arch-cortex-m", "executor-thread", "executor-interrupt"]
+
+[dependencies.embassy-time]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "defmt-timestamp-uptime"]
+
+[dependencies.embassy-rp]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"]
+
+[dependencies.panic-probe]
+version = "1.0.0"
+features = ["print-defmt"]
+
+[dependencies.portable-atomic]
+version = "1.13.1"
+features = ["critical-section"]
+
+[dependencies.opensprig-rs]
+path = "../opensprig-rs"

@@ -1,11 +1,17 @@
-[package]
-name = "opensprig-rs"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+resolver = "3"
+members = ["firmware","opensprig-rs", "parts/blink"]
+default-members = ["firmware"]
 
-[lib]
-path = "src/lib.rs"
+[profile.dev]
+debug = 2
+debug-assertions = true
+overflow-checks = true
 
 [profile.release]
-opt-level = "z"
+opt-level = "s"
 lto = true
+strip = true
+codegen-units = 1
+debug-assertions = false
+overflow-checks = false

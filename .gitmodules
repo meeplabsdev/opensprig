@@ -1,3 +1,0 @@
-[submodule "opensprig/src/fatfs"]
-	path = opensprig/src/fatfs
-	url = https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git

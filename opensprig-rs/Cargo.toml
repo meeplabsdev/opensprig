@@ -1,0 +1,35 @@
+[package]
+name = "opensprig-rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+test = true
+bench = false
+harness = false
+
+[dependencies]
+cortex-m-rt = "0.7.5"
+defmt = "1.0.1"
+defmt-rtt = "1.1.0"
+
+[dependencies.cortex-m]
+version = "0.7.7"
+features = ["inline-asm"]
+
+[dependencies.panic-probe]
+version = "1.0.0"
+features = ["print-defmt"]
+
+[dependencies.cyw43]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "firmware-logs"]
+
+[dependencies.embassy-rp]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "critical-section-impl", "rp2040"]
+
+[dev-dependencies]
+defmt-test = "0.4.0"
