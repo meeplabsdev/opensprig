@@ -501,6 +501,9 @@ source = "git+https://github.com/embassy-rs/embassy.git?rev=251e52f#251e52fd0dcb
 name = "embassy-futures"
 version = "0.1.2"
 source = "git+https://github.com/embassy-rs/embassy.git?rev=251e52f#251e52fd0dcbf604507f1369f9f9b6b90fe0f227"
+dependencies = [
+ "defmt 1.0.1",
+]
 
 [[package]]
 name = "embassy-hal-internal"
@@ -587,6 +590,7 @@ source = "git+https://github.com/embassy-rs/embassy.git?rev=251e52f#251e52fd0dcb
 dependencies = [
  "cfg-if",
  "critical-section",
+ "defmt 1.0.1",
  "embedded-io-async 0.7.0",
  "futures-core",
  "futures-sink",
@@ -903,6 +907,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "hardware_checker"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "cyw43",
+ "cyw43-pio",
+ "defmt 1.0.1",
+ "defmt-rtt",
+ "embassy-executor",
+ "embassy-rp",
+ "embassy-sync 0.7.2 (git+https://github.com/embassy-rs/embassy.git?rev=251e52f)",
+ "embassy-time",
+ "opensprig-rs",
+ "panic-probe",
+ "portable-atomic",
+ "static_cell",
+]
+
+[[package]]
 name = "hash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1141,7 +1165,11 @@ dependencies = [
  "defmt 1.0.1",
  "defmt-rtt",
  "defmt-test",
+ "embassy-executor",
+ "embassy-futures",
  "embassy-rp",
+ "embassy-sync 0.7.2 (git+https://github.com/embassy-rs/embassy.git?rev=251e52f)",
+ "embassy-time",
  "panic-probe",
 ]
 
