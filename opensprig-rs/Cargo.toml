@@ -26,10 +26,30 @@ git = "https://github.com/embassy-rs/embassy.git"
 rev = "251e52f"
 features = ["defmt", "firmware-logs"]
 
+[dependencies.embassy-executor]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "arch-cortex-m", "executor-thread", "executor-interrupt"]
+
+[dependencies.embassy-futures]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt"]
+
 [dependencies.embassy-rp]
 git = "https://github.com/embassy-rs/embassy.git"
 rev = "251e52f"
 features = ["defmt", "critical-section-impl", "rp2040"]
+
+[dependencies.embassy-sync]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt"]
+
+[dependencies.embassy-time]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt", "defmt-timestamp-uptime"]
 
 [dev-dependencies]
 defmt-test = "0.4.0"
