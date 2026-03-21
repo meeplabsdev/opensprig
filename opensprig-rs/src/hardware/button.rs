@@ -42,8 +42,8 @@ impl<'a> Button<'a> {
         self.held.wait().await
     }
 
-    pub async fn debounce(&self) -> ! {
-        const SLEEP_DURATION: Duration = Duration::from_millis(1);
+    pub async fn _run(&self) -> ! {
+        const SLEEP_DURATION: Duration = Duration::from_millis(10);
 
         let mut started_time = Instant::now();
         let mut started_high = false;
@@ -95,9 +95,14 @@ impl<'a> Button<'a> {
 macro_rules! button {
     ($spawner:expr, $pin:expr) => {{
         {
+            #[embassy_executor::task]
+            async fn task(button: &'static Button<'static>) -> ! {
+                button._run().await
+            }
+
             static BUTTON: StaticCell<Button> = StaticCell::new();
             let button: &'static Button = BUTTON.init(Button::new($pin));
-            $spawner.spawn(unwrap!(debounce_task(button)));
+            $spawner.spawn(unwrap!(task(button)));
 
             button
         }
