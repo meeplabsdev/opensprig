@@ -2,6 +2,7 @@
 #![no_main]
 
 pub mod hardware;
+pub mod types;
 
 use defmt_rtt as _;
 use embassy_rp as _;
