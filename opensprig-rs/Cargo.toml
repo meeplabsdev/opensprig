@@ -12,6 +12,7 @@ harness = false
 cortex-m-rt = "0.7.5"
 defmt = "1.0.1"
 defmt-rtt = "1.1.0"
+static_cell = "2.1.1"
 
 [dependencies.cortex-m]
 version = "0.7.7"
