@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod font;
 pub mod hardware;
 pub mod types;
 
