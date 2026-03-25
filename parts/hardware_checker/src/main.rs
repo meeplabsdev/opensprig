@@ -9,17 +9,18 @@ use cyw43_pio::{DEFAULT_CLOCK_DIVIDER, PioSpi};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Level, Output};
-use embassy_rp::peripherals::{DMA_CH0, PIO0};
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_rp::{bind_interrupts, dma};
 use embassy_time::Timer;
-use opensprig_rs::hardware::{Button, PwmLed};
+use opensprig_rs::hardware::{Button, PwmLed, Screen};
+use opensprig_rs::types::Colour;
 use opensprig_rs::{button, clm, fw, nvram, pwm_led_a};
 use static_cell::StaticCell;
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
-    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>;
+    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>, dma::InterruptHandler<DMA_CH1>, dma::InterruptHandler<DMA_CH2>;
 });
 
 #[embassy_executor::task]
@@ -70,6 +71,22 @@ async fn main(spawner: Spawner) {
 
     let led_left = pwm_led_a!(spawner, p.PWM_SLICE6, p.PIN_28);
     let led_right = pwm_led_a!(spawner, p.PWM_SLICE2, p.PIN_4);
+
+    let screen = Screen::new(
+        p.PIN_17, p.PIN_20, p.PIN_22, p.PIN_26, p.SPI0, p.PIN_18, p.PIN_19, p.DMA_CH1, p.PIN_16,
+        p.DMA_CH2, Irqs,
+    )
+    .await
+    .unwrap();
+
+    screen.draw_flood(&Colour::new(0, 0, 0)).await;
+
+    screen
+        .draw_text(&Colour::new(255, 255, 255), "Hello, World!", 5, 5)
+        .await
+        .unwrap();
+
+    screen.blit().await.unwrap();
 
     led_left.blink(1.0 / 1024.0).await;
     led_right.blink(1.0 / 1024.0).await;
