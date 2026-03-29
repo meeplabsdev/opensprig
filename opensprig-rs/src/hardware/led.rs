@@ -1,3 +1,5 @@
+use atomic_float::AtomicF32;
+use core::sync::atomic::Ordering;
 use embassy_rp::{
     Peri,
     pwm::{ChannelAPin, ChannelBPin, Config, Pwm, Slice},
@@ -5,12 +7,12 @@ use embassy_rp::{
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Timer};
 
-const MAX_PWM_BRIGHTNESS: f64 = 8192.0;
+const MAX_PWM_BRIGHTNESS: f32 = 8192.0;
 
 pub struct PwmLed<'a> {
     config: Mutex<ThreadModeRawMutex, Config>,
     pwm: Mutex<ThreadModeRawMutex, Pwm<'a>>,
-    diff: Mutex<ThreadModeRawMutex, f64>,
+    diff: AtomicF32,
 }
 
 impl<'a> PwmLed<'a> {
@@ -21,7 +23,7 @@ impl<'a> PwmLed<'a> {
         Self {
             config: Mutex::new(config),
             pwm: Mutex::new(pwm),
-            diff: Mutex::new(0.0),
+            diff: AtomicF32::new(0.0),
         }
     }
 
@@ -32,11 +34,11 @@ impl<'a> PwmLed<'a> {
         Self {
             config: Mutex::new(config),
             pwm: Mutex::new(pwm),
-            diff: Mutex::new(0.0),
+            diff: AtomicF32::new(0.0),
         }
     }
 
-    pub async fn set(&self, val: f64) -> () {
+    pub async fn set(&self, val: f32) -> () {
         if val >= 0.0 && val <= 1.0 {
             let mut config = self.config.lock().await;
 
@@ -45,20 +47,20 @@ impl<'a> PwmLed<'a> {
         }
     }
 
-    pub async fn blink(&self, diff: f64) -> () {
-        *self.diff.lock().await = diff;
+    pub async fn blink(&self, diff: f32) -> () {
+        self.diff.store(diff, Ordering::Relaxed);
     }
 
     pub async fn _run(&self) -> ! {
         const SLEEP_DURATION: Duration = Duration::from_millis(1);
 
-        let mut val: f64 = 0.0;
+        let mut val: f32 = 0.0;
         let mut edge: i8 = 1;
 
         loop {
-            let diff = self.diff.lock().await.clone();
+            let diff = self.diff.load(Ordering::Relaxed);
             if diff > 0.0 {
-                val += diff * edge as f64;
+                val += diff * edge as f32;
                 if val >= 1.0 || val <= 0.0 {
                     edge = -edge;
                 }
