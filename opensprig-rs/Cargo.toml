@@ -9,6 +9,7 @@ bench = false
 harness = false
 
 [dependencies]
+atomic_float = "1.1.0"
 cortex-m-rt = "0.7.5"
 defmt = "1.0.1"
 defmt-rtt = "1.1.0"
