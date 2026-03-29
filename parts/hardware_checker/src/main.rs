@@ -1,10 +1,13 @@
 #![no_std]
 #![no_main]
 
+mod dpad_indicator;
+
 use defmt_rtt as _;
 use embassy_rp as _;
 use panic_probe as _;
 
+use crate::dpad_indicator::DPadIndicator;
 use cyw43_pio::{DEFAULT_CLOCK_DIVIDER, PioSpi};
 use defmt::*;
 use embassy_executor::Spawner;
@@ -59,15 +62,15 @@ async fn main(spawner: Spawner) {
         .set_power_management(cyw43::PowerManagementMode::PowerSave)
         .await;
 
-    // let button_l_up = button!(spawner, p.PIN_5);
-    // let button_l_left = button!(spawner, p.PIN_6);
-    // let button_l_down = button!(spawner, p.PIN_7);
-    // let button_l_right = button!(spawner, p.PIN_8);
+    let button_l_up = button!(spawner, p.PIN_5);
+    let button_l_left = button!(spawner, p.PIN_6);
+    let button_l_down = button!(spawner, p.PIN_7);
+    let button_l_right = button!(spawner, p.PIN_8);
 
     let button_r_up = button!(spawner, p.PIN_12);
-    // let button_r_left = button!(spawner, p.PIN_13);
-    // let button_r_down = button!(spawner, p.PIN_14);
-    // let button_r_right = button!(spawner, p.PIN_15);
+    let button_r_left = button!(spawner, p.PIN_13);
+    let button_r_down = button!(spawner, p.PIN_14);
+    let button_r_right = button!(spawner, p.PIN_15);
 
     let led_left = pwm_led_a!(spawner, p.PWM_SLICE6, p.PIN_28);
     let led_right = pwm_led_a!(spawner, p.PWM_SLICE2, p.PIN_4);
@@ -78,6 +81,9 @@ async fn main(spawner: Spawner) {
     )
     .await
     .unwrap();
+
+    let mut left_dpad_indicator = DPadIndicator::new(12, 40);
+    let mut right_dpad_indicator = DPadIndicator::new(103, 40);
 
     screen.draw_flood(&Colour::new(0, 0, 0)).await;
 
@@ -92,9 +98,29 @@ async fn main(spawner: Spawner) {
     led_right.blink(1.0 / 1024.0).await;
 
     loop {
-        button_r_up.wait_held().await;
-        control.gpio_set(0, true).await;
+        left_dpad_indicator.set_pressed(
+            button_l_up.is_pressed(),
+            button_l_right.is_pressed(),
+            button_l_down.is_pressed(),
+            button_l_left.is_pressed(),
+        );
+
+        right_dpad_indicator.set_pressed(
+            button_r_up.is_pressed(),
+            button_r_right.is_pressed(),
+            button_r_down.is_pressed(),
+            button_r_left.is_pressed(),
+        );
+
+        left_dpad_indicator.blit(&screen).await.unwrap();
+        right_dpad_indicator.blit(&screen).await.unwrap();
+        screen.blit().await.unwrap();
         Timer::after_millis(5).await;
-        control.gpio_set(0, false).await;
+
+        // button_l_left.wait_held().await;
+        // control.gpio_set(0, true).await;
+        // Timer::after_millis(5).await;
+        // control.gpio_set(0, false).await;
+        // button_l_left.wait_released().await;
     }
 }
