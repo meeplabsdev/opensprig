@@ -1,92 +1,80 @@
+use core::sync::atomic::{AtomicBool, Ordering};
+use embassy_futures::select::select;
 use embassy_rp::{
     Peri,
-    gpio::{Input, Pin, Pull},
+    gpio::{Flex, Pin, Pull},
 };
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Duration, Timer};
 
-const DEBOUNCE_MS: u64 = 50;
-const HOLD_MS: u64 = 800;
+const DEBOUNCE_MS: Duration = Duration::from_millis(50);
+const HOLD_MS: Duration = Duration::from_millis(800);
 
 pub struct Button<'a> {
-    input: Input<'a>,
-    pressed: Signal<CriticalSectionRawMutex, ()>,
-    held: Signal<CriticalSectionRawMutex, ()>,
+    pin: Flex<'a>,
+    held: AtomicBool,
 }
 
 impl<'a> Button<'a> {
     pub fn new(pin: Peri<'a, impl Pin>) -> Self {
-        let mut input = Input::new(pin, Pull::Up);
-        input.set_inversion(true);
+        let mut pin = Flex::new(pin);
+        pin.set_as_input();
+        pin.set_pull(Pull::Up);
+        pin.set_input_inversion(true);
 
         Self {
-            input,
-            pressed: Signal::new(),
-            held: Signal::new(),
+            pin: pin,
+            held: AtomicBool::new(false),
         }
     }
 
     pub fn is_pressed(&self) -> bool {
-        self.pressed.signaled()
+        self.pin.is_high()
     }
 
     pub fn is_held(&self) -> bool {
-        self.held.signaled()
+        self.held.load(Ordering::Relaxed)
     }
 
     pub async fn wait_pressed(&self) -> () {
-        self.pressed.wait().await
+        loop {
+            if self.is_pressed() {
+                break;
+            }
+
+            Timer::after(DEBOUNCE_MS).await;
+        }
+    }
+
+    pub async fn wait_released(&self) -> () {
+        loop {
+            if !self.is_pressed() {
+                break;
+            }
+
+            Timer::after(DEBOUNCE_MS).await;
+        }
     }
 
     pub async fn wait_held(&self) -> () {
-        self.held.wait().await
+        loop {
+            self.wait_pressed().await;
+
+            if select(self.wait_released(), Timer::after(HOLD_MS))
+                .await
+                .is_second()
+            {
+                break;
+            }
+        }
     }
 
     pub async fn _run(&self) -> ! {
-        const SLEEP_DURATION: Duration = Duration::from_millis(10);
-
-        let mut started_time = Instant::now();
-        let mut started_high = false;
-        let mut is_held = false;
-
         loop {
-            let action_duration = started_time.elapsed().as_millis();
-            let is_high = self.input.is_high();
+            self.held.store(false, Ordering::Relaxed);
+            self.wait_held().await;
 
-            if is_high && started_high
-            // holding the button
-            && action_duration > HOLD_MS
-            {
-                started_time = Instant::now();
-                started_high = false;
-                is_held = true;
-
-                self.held.signal(());
-            } else if !is_high && is_held
-            // release the button after holding it
-            {
-                is_held = false;
-
-                self.held.reset();
-            } else if !is_high && started_high
-            // quickly pressing the button
-            && action_duration < HOLD_MS
-            {
-                started_time = Instant::now();
-                started_high = false;
-
-                self.pressed.signal(());
-            } else if is_high && !started_high && !is_held
-            // action starting
-            && action_duration > DEBOUNCE_MS
-            {
-                started_time = Instant::now();
-                started_high = true;
-
-                self.pressed.reset();
-            }
-
-            Timer::after(SLEEP_DURATION).await;
+            self.held.store(true, Ordering::Relaxed);
+            self.wait_released().await;
         }
     }
 }
