@@ -14,6 +14,7 @@ Progress:
 - sound
 - badapple! example
 - helloworld example
+
 (This is basically fully integrated POC)
 
 (rust)
@@ -24,4 +25,5 @@ Progress:
 - NO sound
 - helloworld example
 - (no badapple!, but this would be easy to do)
+
 (This codebase is much nicer)
