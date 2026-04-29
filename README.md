@@ -14,8 +14,7 @@ Progress:
 - sound
 - badapple! example
 - helloworld example
-
-(This is basically fully integrated POC)
+- (This is basically fully integrated POC)
 
 (rust)
 - LEDs
@@ -25,5 +24,4 @@ Progress:
 - NO sound
 - helloworld example
 - (no badapple!, but this would be easy to do)
-
-(This codebase is much nicer)
+- (This codebase is much nicer)
