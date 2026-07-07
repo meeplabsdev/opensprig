@@ -4,12 +4,12 @@ use crate::{
 };
 use embassy_rp::{
     Peri,
-    dma::{self, ChannelInstance},
     gpio::{Level, Output, Pin},
-    interrupt::typelevel::Binding,
-    spi::{self, Async, ClkPin, Config, Instance, MisoPin, MosiPin, Spi},
+    spi::{self, Async, Instance, Spi},
 };
-use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
+use embassy_sync::{
+    blocking_mutex::Mutex as BlockingMutex, blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex,
+};
 use embassy_time::Timer;
 use static_cell::StaticCell;
 
@@ -82,38 +82,27 @@ pub struct Screen<'a, T: Instance> {
     cs: Mutex<ThreadModeRawMutex, Output<'a>>,
     dc: Mutex<ThreadModeRawMutex, Output<'a>>,
     rst: Mutex<ThreadModeRawMutex, Output<'a>>,
-    spi: Mutex<ThreadModeRawMutex, Spi<'a, T, Async>>,
+    spi: &'a BlockingMutex<ThreadModeRawMutex, Spi<'a, T, Async>>,
     pixels: Mutex<ThreadModeRawMutex, &'a mut [u16; SCREEN_SIZE]>,
 }
 
 impl<'a, T: Instance> Screen<'a, T> {
-    pub async fn new<TxDma: ChannelInstance, RxDma: ChannelInstance>(
-        backlight: Peri<'a, impl Pin>,
+    pub async fn new(
+        spi: &'a BlockingMutex<ThreadModeRawMutex, Spi<'a, T, Async>>,
         cs: Peri<'a, impl Pin>,
         dc: Peri<'a, impl Pin>,
         rst: Peri<'a, impl Pin>,
-        spi: Peri<'a, T>,
-        clk: Peri<'a, impl ClkPin<T>>,
-        tx: Peri<'a, impl MosiPin<T>>,
-        tx_dma: Peri<'a, TxDma>,
-        rx: Peri<'a, impl MisoPin<T>>,
-        rx_dma: Peri<'a, RxDma>,
-        irq: impl Binding<TxDma::Interrupt, dma::InterruptHandler<TxDma>>
-        + Binding<RxDma::Interrupt, dma::InterruptHandler<RxDma>>
-        + 'a,
+        backlight: Peri<'a, impl Pin>,
     ) -> Result<Self, Error> {
         static PIXELS: StaticCell<[u16; SCREEN_SIZE]> = StaticCell::new();
-        let pixels = PIXELS.init_with(|| [0u16; SCREEN_SIZE]);
-
-        let mut config = Config::default();
-        config.frequency = 30000000;
+        let pixels = PIXELS.init([0u16; SCREEN_SIZE]);
 
         let screen = Self {
             backlight: Mutex::new(Output::new(backlight, Level::Low)),
             cs: Mutex::new(Output::new(cs, Level::High)),
             dc: Mutex::new(Output::new(dc, Level::Low)),
             rst: Mutex::new(Output::new(rst, Level::Low)),
-            spi: Mutex::new(Spi::new(spi, clk, tx, rx, tx_dma, rx_dma, irq, config)),
+            spi: spi,
             pixels: Mutex::new(pixels),
         };
 
@@ -151,18 +140,18 @@ impl<'a, T: Instance> Screen<'a, T> {
 
     async fn spi_command(&self, x: u8) -> Result<(), spi::Error> {
         self.dc_low().await;
-        self.spi.lock().await.write(&[x]).await
+        unsafe { self.spi.lock_mut(|s| s.blocking_write(&[x])) }
     }
 
     async fn spi_data(&self, x: &[u8]) -> Result<(), spi::Error> {
         self.dc_high().await;
-        self.spi.lock().await.write(x).await
+        unsafe { self.spi.lock_mut(|s| s.blocking_write(x)) }
     }
 
     async fn write_command(&self, cmd: u8) -> Result<(), Error> {
         self.cs_low().await;
         self.dc_low().await;
-        self.spi.lock().await.write(&[cmd]).await?;
+        (unsafe { self.spi.lock_mut(|s| s.blocking_write(&[cmd]))? });
         self.cs_high().await;
 
         Ok(())
@@ -171,7 +160,7 @@ impl<'a, T: Instance> Screen<'a, T> {
     async fn write_data(&self, data: &[u8]) -> Result<(), Error> {
         self.cs_low().await;
         self.dc_high().await;
-        self.spi.lock().await.write(data).await?;
+        (unsafe { self.spi.lock_mut(|s| s.blocking_write(data))? });
         self.cs_high().await;
 
         Ok(())
@@ -274,16 +263,14 @@ impl<'a, T: Instance> Screen<'a, T> {
         self.spi_command(st7735::RAMWR).await?;
         self.dc_high().await; // for empty data
 
-        self.spi
-            .lock()
-            .await
-            .write(unsafe {
-                core::slice::from_raw_parts(
-                    self.pixels.lock().await.as_ptr() as *const u8,
-                    SCREEN_SIZE * 2,
-                )
-            })
-            .await?;
+        unsafe {
+            let data = core::slice::from_raw_parts(
+                self.pixels.lock().await.as_ptr() as *const u8,
+                SCREEN_SIZE * 2,
+            );
+
+            self.spi.lock_mut(|s| s.blocking_write(data))?
+        };
 
         self.cs_high().await;
 
