@@ -1,5 +1,4 @@
 use core::fmt::{Debug, Display};
-use embassy_rp::spi;
 
 pub struct Error {
     inner: &'static str,
@@ -23,9 +22,24 @@ impl Display for Error {
     }
 }
 
-impl From<spi::Error> for Error {
-    fn from(_: spi::Error) -> Self {
-        // No errors for now
+impl From<embassy_rp::spi::Error> for Error {
+    fn from(_: embassy_rp::spi::Error) -> Self {
         Self { inner: "SPI Error" }
+    }
+}
+
+impl From<embedded_sdmmc::Error<embedded_sdmmc::SdCardError>> for Error {
+    fn from(_: embedded_sdmmc::Error<embedded_sdmmc::SdCardError>) -> Self {
+        Self {
+            inner: "SD Card Error",
+        }
+    }
+}
+
+impl From<embedded_sdmmc::SdCardError> for Error {
+    fn from(_: embedded_sdmmc::SdCardError) -> Self {
+        Self {
+            inner: "SD Card Error",
+        }
     }
 }
