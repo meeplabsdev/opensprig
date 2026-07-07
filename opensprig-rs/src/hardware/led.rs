@@ -52,10 +52,10 @@ impl<'a> PwmLed<'a> {
     }
 
     pub async fn _run(&self) -> ! {
-        const SLEEP_DURATION: Duration = Duration::from_millis(1);
+        const SLEEP_DURATION: Duration = Duration::from_millis(10);
 
         let mut val: f32 = 0.0;
-        let mut edge: i8 = 1;
+        let mut edge: i8 = 10;
 
         loop {
             let diff = self.diff.load(Ordering::Relaxed);
