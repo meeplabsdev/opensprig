@@ -20,8 +20,13 @@ Progress:
 - LEDs
 - buttons
 - screen
-- NO storage
-- NO sound
+- storage
+- sound
 - helloworld example
+- hardware checker example
 - (no badapple!, but this would be easy to do)
 - (This codebase is much nicer)
+
+note: to use hardware checker example, the sd card must have the /audio/believer.pcm file, which can be obtained with the command
+
+`ffmpeg -i believer.mp3 -ar 24000 -ac 1 -f u16le -acodec pcm_u16le believer.pcm`
