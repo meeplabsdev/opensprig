@@ -155,8 +155,8 @@ async fn main(spawner: Spawner) {
             button_r_left.is_pressed(),
         );
 
-        left_dpad_indicator.blit(&screen).await.unwrap();
-        right_dpad_indicator.blit(&screen).await.unwrap();
+        left_dpad_indicator.blit(screen).await.unwrap();
+        right_dpad_indicator.blit(screen).await.unwrap();
         screen.blit().await.unwrap();
         Timer::after_millis(5).await;
     }

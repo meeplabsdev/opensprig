@@ -83,6 +83,8 @@ impl<'a> Button<'a> {
 macro_rules! button {
     ($spawner:expr, $pin:expr) => {{
         {
+            use opensprig_rs::hardware::Button;
+
             #[embassy_executor::task]
             async fn task(button: &'static Button<'static>) -> ! {
                 button._run().await

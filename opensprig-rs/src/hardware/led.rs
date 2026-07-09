@@ -77,6 +77,8 @@ impl<'a> PwmLed<'a> {
 macro_rules! pwm_led_a {
     ($spawner:expr, $slice:expr, $pin:expr) => {{
         {
+            use opensprig_rs::hardware::PwmLed;
+
             #[embassy_executor::task]
             async fn task(led: &'static PwmLed<'static>) -> ! {
                 led._run().await
@@ -95,6 +97,8 @@ macro_rules! pwm_led_a {
 macro_rules! pwm_led_b {
     ($spawner:expr, $slice:expr, $pin:expr) => {{
         {
+            use opensprig_rs::hardware::PwmLed;
+
             #[embassy_executor::task]
             async fn task(led: &'static PwmLed<'static>) -> ! {
                 led._run().await

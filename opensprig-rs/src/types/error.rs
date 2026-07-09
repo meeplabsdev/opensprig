@@ -43,3 +43,11 @@ impl From<embedded_sdmmc::SdCardError> for Error {
         }
     }
 }
+
+impl From<embassy_rp::flash::Error> for Error {
+    fn from(_: embassy_rp::flash::Error) -> Self {
+        Self {
+            inner: "Flash Error",
+        }
+    }
+}
