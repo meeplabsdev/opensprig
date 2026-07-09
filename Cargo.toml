@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["firmware", "opensprig-rs", "parts/blink", "parts/hardware_checker"]
+members = ["firmware", "opensprig-rs", "parts/blink", "parts/chat", "parts/hardware_checker"]
 default-members = ["firmware"]
 
 [profile.dev]
