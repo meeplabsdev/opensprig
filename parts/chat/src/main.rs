@@ -25,7 +25,7 @@ async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     let (
-        mut w,
+        _watchdog,
         _net_device,
         _control,
         screen,
@@ -35,10 +35,10 @@ async fn main(spawner: Spawner) {
         button_l_left,
         button_l_down,
         button_l_right,
-        button_r_up,
+        _button_r_up,
         button_r_left,
         button_r_down,
-        button_r_right,
+        _button_r_right,
         _led_left,
         _led_right,
     ) = init!(spawner, p);
@@ -48,11 +48,6 @@ async fn main(spawner: Spawner) {
     screen.blit().await.unwrap();
 
     loop {
-        if button_r_up.is_held() && button_r_right.is_held() {
-            w.trigger_reset();
-            loop {}
-        }
-
         if button_r_left.is_pressed() {
             keyboard.press();
             keyboard.blit(screen).await.unwrap();

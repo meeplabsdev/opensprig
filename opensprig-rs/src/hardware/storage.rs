@@ -63,7 +63,6 @@ impl<'a, T: Instance> Storage<'a, T> {
             root,
         };
 
-        storage.list("/").await?;
         if !storage.exists("sprig.1").await {
             storage
                 .write("sprig.1", &[], Mode::ReadWriteCreateOrTruncate)
@@ -151,23 +150,31 @@ impl<'a, T: Instance> Storage<'a, T> {
         found
     }
 
-    pub async fn list(&mut self, path: &str) -> Result<(), Error> {
+    pub async fn list(&mut self, path: &str) -> Result<[Option<[u8; 12]>; 256], Error> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
         let dir = mgr.open_dir(directory.unwrap_or(self.root), name)?;
         defmt::debug!("Opened {}", dir);
 
+        let mut output = [None; 256];
+        let mut i = 0;
+
         mgr.iterate_dir(dir, |entry| {
+            let name = entry.name.base_name();
+            let extension = entry.name.extension();
+            let mut item = [0u8; 12];
+
             if entry.attributes.is_directory() {
-                defmt::info!("{} <DIR>", str::from_utf8(entry.name.base_name()).unwrap());
+                item[..name.len()].copy_from_slice(name);
             } else {
-                defmt::info!(
-                    "{}.{}",
-                    str::from_utf8(entry.name.base_name()).unwrap(),
-                    str::from_utf8(entry.name.extension()).unwrap()
-                );
+                item[..name.len()].copy_from_slice(name);
+                item[name.len()] = b'.';
+                item[name.len() + 1..name.len() + extension.len() + 1].copy_from_slice(extension);
             }
+
+            output[i] = Some(item);
+            i += 1;
         })?;
 
         mgr.close_dir(dir)?;
@@ -175,7 +182,7 @@ impl<'a, T: Instance> Storage<'a, T> {
             mgr.close_dir(d)?;
         }
 
-        Ok(())
+        Ok(output)
     }
 
     pub async fn write(&mut self, path: &str, buffer: &[u8], mode: Mode) -> Result<(), Error> {

@@ -2,6 +2,7 @@ use embassy_rp::peripherals::SPI0;
 use opensprig_rs::{
     hardware::Screen,
     types::{Colour, Error},
+    utf8_from_u8,
 };
 
 const COLOUR_BG: Colour = Colour::new(115, 115, 115);
@@ -88,13 +89,7 @@ impl Keyboard {
     }
 
     pub fn get_content(&self) -> &str {
-        let end = self
-            .content
-            .iter()
-            .rposition(|&b| b != 0)
-            .map_or(0, |i| i + 1);
-
-        str::from_utf8(&self.content[..end]).unwrap()
+        utf8_from_u8(&self.content)
     }
 
     pub async fn blit(&self, screen: &Screen<'_, SPI0>) -> Result<(), Error> {

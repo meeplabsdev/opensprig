@@ -28,7 +28,7 @@ async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     let (
-        _w,
+        _watchdog,
         _net_device,
         _control,
         screen,

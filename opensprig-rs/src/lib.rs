@@ -179,6 +179,15 @@ macro_rules! nvram {
     () => {{ opensprig_rs::aligned_flash!(0x101ff000, 0x002E6) }};
 }
 
+pub fn slice_zeros<const S: usize>(content: &[u8; S]) -> &[u8] {
+    let end = content.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
+    &content[..end]
+}
+
+pub fn utf8_from_u8<const S: usize>(content: &[u8; S]) -> &str {
+    str::from_utf8(slice_zeros(content)).unwrap()
+}
+
 #[cfg(test)]
 #[defmt_test::tests]
 mod tests {
