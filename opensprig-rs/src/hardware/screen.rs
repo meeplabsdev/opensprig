@@ -331,7 +331,7 @@ impl<'a, T: Instance> Screen<'a, T> {
         x: usize,
         y: usize,
     ) -> Result<(), Error> {
-        if ord - 32 >= FOURBYSIX.len() {
+        if ord < 32 || ord - 32 >= FOURBYSIX.len() {
             return Err(Error::new("Ordinal out of range"));
         }
 

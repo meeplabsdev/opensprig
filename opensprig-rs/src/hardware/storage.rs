@@ -136,12 +136,19 @@ impl<'a, T: Instance> Storage<'a, T> {
     }
 
     pub async fn exists(&mut self, path: &str) -> bool {
-        if let Ok((Some(directory), _)) = self.resolve(path).await {
-            let _ = self.volume_manager.lock().await.close_dir(directory);
-            return true;
+        let Ok((directory, name)) = self.resolve(path).await else {
+            return false;
+        };
+
+        let mgr = self.volume_manager.lock().await;
+        let dir = directory.unwrap_or(self.root);
+        let found = mgr.find_directory_entry(dir, name).is_ok();
+
+        if let Some(d) = directory {
+            let _ = mgr.close_dir(d);
         }
 
-        return false;
+        found
     }
 
     pub async fn list(&mut self, path: &str) -> Result<(), Error> {
@@ -221,6 +228,51 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(buf)
     }
 
+    pub async fn read_into(
+        &mut self,
+        path: &str,
+        buffer: &mut [u8],
+        mut on_chunk: impl FnMut(u32, &[u8]) -> Result<(), Error>,
+    ) -> Result<u32, Error> {
+        let (directory, name) = self.resolve(path).await?;
+        let mgr = self.volume_manager.lock().await;
+        let dir = directory.unwrap_or(self.root);
+
+        let file = match mgr.open_file_in_dir(dir, name, Mode::ReadOnly) {
+            Ok(f) => f,
+            Err(e) => {
+                if let Some(d) = directory {
+                    let _ = mgr.close_dir(d);
+                }
+                return Err(e.into());
+            }
+        };
+
+        let mut offset: u32 = 0;
+        let result: Result<(), Error> = (|| {
+            loop {
+                let read = mgr.read(file, buffer)?;
+                if read == 0 {
+                    break;
+                }
+                on_chunk(offset, &buffer[..read])?;
+                offset += read as u32;
+                if read < buffer.len() {
+                    break;
+                }
+            }
+            Ok(())
+        })();
+
+        let _ = mgr.close_file(file);
+        if let Some(d) = directory {
+            let _ = mgr.close_dir(d);
+        }
+
+        result?;
+        Ok(offset)
+    }
+
     pub async fn create(&mut self, path: &str) -> Result<(), Error> {
         self.write(path, &[], Mode::ReadWriteCreate).await
     }
@@ -236,6 +288,20 @@ impl<'a, T: Instance> Storage<'a, T> {
         }
 
         Ok(())
+    }
+
+    pub async fn file_size(&mut self, path: &str) -> Result<u32, Error> {
+        let (directory, name) = self.resolve(path).await?;
+        let mgr = self.volume_manager.lock().await;
+        let dir = directory.unwrap_or(self.root);
+
+        let result = mgr.find_directory_entry(dir, name).map(|e| e.size);
+
+        if let Some(d) = directory {
+            let _ = mgr.close_dir(d);
+        }
+
+        Ok(result?)
     }
 }
 
