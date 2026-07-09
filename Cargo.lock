@@ -116,6 +116,7 @@ dependencies = [
  "defmt-rtt",
  "embassy-executor",
  "embassy-rp",
+ "embassy-sync 0.7.2 (git+https://github.com/embassy-rs/embassy.git?rev=251e52f)",
  "embassy-time",
  "opensprig-rs",
  "panic-probe",

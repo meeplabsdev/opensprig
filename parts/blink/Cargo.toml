@@ -38,6 +38,11 @@ git = "https://github.com/embassy-rs/embassy.git"
 rev = "251e52f"
 features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"]
 
+[dependencies.embassy-sync]
+git = "https://github.com/embassy-rs/embassy.git"
+rev = "251e52f"
+features = ["defmt"]
+
 [dependencies.embassy-time]
 git = "https://github.com/embassy-rs/embassy.git"
 rev = "251e52f"
