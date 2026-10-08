@@ -64,8 +64,8 @@ async fn main(spawner: Spawner) {
     {
         #[embassy_executor::task]
         async fn task(
-            speaker: &'static mut Speaker<'static, PIO0, 1>,
-            storage: &'static mut Storage<'static, SPI0>,
+            speaker: &'static Speaker<'static, PIO0, 1>,
+            storage: &'static Storage<'static, SPI0>,
         ) -> ! {
             speaker.play_pcm(storage, "audio/believer.pcm", 32).await;
             loop {}

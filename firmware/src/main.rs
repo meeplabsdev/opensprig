@@ -13,8 +13,9 @@ use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
 use embassy_time::Timer;
 use opensprig_rs::hardware::Storage;
-use opensprig_rs::types::{Colour, Error};
-use opensprig_rs::{init, slice_zeros, utf8_from_u8};
+use opensprig_rs::types::Error;
+use opensprig_rs::ui::List;
+use opensprig_rs::{init, slice_at_needle, utf8_from_u8};
 
 const PROGRAM_ADDRESS: u32 = 0x1008_0000;
 const PROGRAM_LENGTH: u32 = 0x13_E000;
@@ -22,10 +23,6 @@ const PROGRAM_OFFSET: u32 = PROGRAM_ADDRESS - 0x1000_0000;
 const TOTAL_FLASH_SIZE: usize = 2 * 1024 * 1024;
 const BOOT_PROGRAM_MAGIC: u32 = 0x0550_1EAD;
 const READ_CHUNK_SIZE: usize = 4096;
-
-const COLOUR_BG: Colour = Colour::new(115, 115, 115);
-const COLOUR_HOVER: Colour = Colour::new(140, 140, 140);
-const COLOUR_TEXT: Colour = Colour::new(255, 255, 255);
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
@@ -48,7 +45,7 @@ fn boot() -> ! {
 }
 
 async fn load(
-    storage: &mut Storage<'static, SPI0>,
+    storage: &Storage<'static, SPI0>,
     mut flash: Flash<'static, FLASH, Blocking, TOTAL_FLASH_SIZE>,
     path: &str,
 ) -> Result<u32, Error> {
@@ -103,43 +100,41 @@ async fn main(spawner: Spawner) {
         _led_right,
     ) = init!(spawner, p);
 
-    let mut target: usize = 0;
-    let items = storage.list("program").await.unwrap();
+    let (ids, items) = storage
+        .list("program", |path| path.ends_with(&[46, 98, 105, 110])) // .bin
+        .await
+        .unwrap();
 
-    let mut iter = items
-        .iter()
-        .flatten()
-        .filter(|path| slice_zeros(path).ends_with(&[66, 73, 78])) // .bin
-        .map(|path| utf8_from_u8(path))
-        .enumerate();
-    let num_items = iter.clone().count();
+    let mut list = List::new(
+        slice_at_needle(&ids, [0u8; 12]),
+        slice_at_needle(&items, [0u8; 40]),
+    );
+    list.blit(screen, utf8_from_u8).await.unwrap();
+    screen.blit().await.unwrap();
 
     loop {
         if button_l_up.is_pressed() {
-            match target.checked_sub(1) {
-                Some(t) => target = t,
-                _ => (),
-            }
-
+            list.up();
+            list.blit(screen, utf8_from_u8).await.unwrap();
+            screen.blit().await.unwrap();
             button_l_up.wait_released().await;
         } else if button_l_down.is_pressed() {
-            if target + 1 < num_items {
-                target += 1;
-            }
-
+            list.down();
+            list.blit(screen, utf8_from_u8).await.unwrap();
+            screen.blit().await.unwrap();
             button_l_down.wait_released().await;
         } else if button_r_left.is_pressed() {
-            let item = iter.nth(target).unwrap().1;
+            screen.set_backlight(false).await;
+
             let mut path = [0u8; 20];
             path[..8].copy_from_slice(b"program/");
-            path[8..item.len() + 8].copy_from_slice(item.as_bytes());
+
+            let item = slice_at_needle(list.get_target_id(), 0);
+            path[8..item.len() + 8].copy_from_slice(item);
 
             match load(storage, Flash::new_blocking(p.FLASH), utf8_from_u8(&path)).await {
                 Ok(size) => {
                     info!("Loaded ({} bytes). Rebooting into program.", size);
-
-                    screen.draw_flood(&Colour::new(0, 0, 0)).await;
-                    screen.blit().await.unwrap();
 
                     Timer::after_millis(10).await;
                     pac::WATCHDOG.scratch0().write(|w| *w = BOOT_PROGRAM_MAGIC);
@@ -153,23 +148,5 @@ async fn main(spawner: Spawner) {
             watchdog.trigger_reset();
             loop {}
         }
-
-        screen.draw_flood(&Colour::new(0, 0, 0)).await;
-
-        for (i, path) in iter.clone() {
-            let mut bg = COLOUR_BG;
-            if target == i {
-                bg = COLOUR_HOVER;
-            }
-
-            screen.draw_rectangle(&bg, 0, i * 8, 160, 8).await.unwrap();
-
-            screen
-                .draw_text(&COLOUR_TEXT, path, 1, i * 8 + 1)
-                .await
-                .unwrap();
-        }
-
-        screen.blit().await.unwrap();
     }
 }

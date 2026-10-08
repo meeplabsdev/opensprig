@@ -6,6 +6,7 @@ mod mutex_device;
 
 pub mod hardware;
 pub mod types;
+pub mod ui;
 
 use defmt_rtt as _;
 use embassy_rp as _;
@@ -80,7 +81,7 @@ macro_rules! init {
             )));
 
         static SCREEN: StaticCell<Screen<'static, SPI0>> = StaticCell::new();
-        let screen: &'static mut Screen<'static, SPI0> = SCREEN.init(
+        let screen: &'static Screen<'static, SPI0> = SCREEN.init(
             Screen::new(spi, $p.PIN_20, $p.PIN_22, $p.PIN_26, $p.PIN_17)
                 .await
                 .unwrap(),
@@ -90,7 +91,7 @@ macro_rules! init {
         screen.blit().await.unwrap();
 
         static SPEAKER: StaticCell<Speaker<'static, PIO0, 1>> = StaticCell::new();
-        let speaker: &'static mut Speaker<'static, PIO0, 1> = SPEAKER.init(Speaker::new(
+        let speaker: &'static Speaker<'static, PIO0, 1> = SPEAKER.init(Speaker::new(
             &mut pio.common,
             pio.sm1,
             $p.PIN_9,
@@ -101,7 +102,7 @@ macro_rules! init {
         ));
 
         static STORAGE: StaticCell<Storage<'static, SPI0>> = StaticCell::new();
-        let storage: &'static mut Storage<'static, SPI0> =
+        let storage: &'static Storage<'static, SPI0> =
             STORAGE.init(Storage::new(spi, $p.PIN_21).await.unwrap());
 
         let button_l_up = button!($spawner, $p.PIN_5);
@@ -179,13 +180,19 @@ macro_rules! nvram {
     () => {{ opensprig_rs::aligned_flash!(0x101ff000, 0x002E6) }};
 }
 
-pub fn slice_zeros<const S: usize>(content: &[u8; S]) -> &[u8] {
-    let end = content.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
+pub fn slice_at_needle<'t, T: PartialEq, const S: usize>(
+    content: &'t [T; S],
+    needle: T,
+) -> &'t [T] {
+    let end = content
+        .iter()
+        .rposition(|b| *b != needle)
+        .map_or(0, |i| i + 1);
     &content[..end]
 }
 
-pub fn utf8_from_u8<const S: usize>(content: &[u8; S]) -> &str {
-    str::from_utf8(slice_zeros(content)).unwrap()
+pub fn utf8_from_u8<'t, const S: usize>(content: &'t [u8; S]) -> &'t str {
+    str::from_utf8(slice_at_needle(content, 0)).unwrap()
 }
 
 #[cfg(test)]

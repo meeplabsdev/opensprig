@@ -85,7 +85,7 @@ impl<'a, T: Instance, const S: usize> Speaker<'a, T, S> {
 
     pub async fn play_pcm(
         &self,
-        storage: &mut Storage<'a, impl spi::Instance>,
+        storage: &Storage<'a, impl spi::Instance>,
         path: &str,
         volume: u32,
     ) {
@@ -120,7 +120,7 @@ impl<'a, T: Instance, const S: usize> Speaker<'a, T, S> {
 }
 
 async fn read_buf(
-    storage: &mut Storage<'_, impl spi::Instance>,
+    storage: &Storage<'_, impl spi::Instance>,
     path: &str,
     offset: usize,
     buf: &mut [u32; AUDIO_BUF_SAMPLES],

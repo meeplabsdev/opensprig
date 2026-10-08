@@ -1,21 +1,17 @@
-use embassy_rp::peripherals::SPI0;
-use opensprig_rs::{
+use crate::{
     hardware::Screen,
-    types::{Colour, Error},
+    types::Error,
+    ui::{COLOUR_BG, COLOUR_HOVER, COLOUR_PRESS, COLOUR_TEXT},
     utf8_from_u8,
 };
-
-const COLOUR_BG: Colour = Colour::new(115, 115, 115);
-const COLOUR_HOVER: Colour = Colour::new(140, 140, 140);
-const COLOUR_PRESS: Colour = Colour::new(230, 230, 230);
-const COLOUR_TEXT: Colour = Colour::new(255, 255, 255);
+use embassy_rp::peripherals::SPI0;
 
 const MAX_CONTENT: usize = 256;
-const ALPHABET: [[&str; 10]; 4] = [
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-    ["A", "S", "D", "F", "G", "H", "J", "K", "L", "-"],
-    ["Z", "X", "C", "V", "B", "N", "M", " ", ".", "+"],
+const ALPHABET: [&str; 40] = [
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", //
+    "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", //
+    "A", "S", "D", "F", "G", "H", "J", "K", "L", "-", //
+    "Z", "X", "C", "V", "B", "N", "M", " ", ".", "+", //
 ];
 
 pub struct Keyboard {
@@ -41,10 +37,7 @@ impl Keyboard {
 
     pub fn press(&mut self) {
         self.pressed = true;
-        self.content[self.pointer] = ALPHABET[self.target / 10][self.target % 10]
-            .chars()
-            .next()
-            .unwrap() as u8;
+        self.content[self.pointer] = ALPHABET[self.target].chars().next().unwrap() as u8;
 
         if self.pointer < MAX_CONTENT {
             self.pointer += 1;
@@ -65,7 +58,7 @@ impl Keyboard {
 
     fn mutate_target(&mut self, diff: isize) {
         let res = diff + self.target as isize;
-        if res < 0 || res >= 40 {
+        if res < 0 || res >= ALPHABET.len() as isize {
             return;
         }
 
@@ -93,30 +86,31 @@ impl Keyboard {
     }
 
     pub async fn blit(&self, screen: &Screen<'_, SPI0>) -> Result<(), Error> {
-        for (j, line) in ALPHABET.iter().enumerate() {
-            for (i, character) in line.iter().enumerate() {
-                let mut bg = COLOUR_BG;
-                if i + j * 10 == self.target {
-                    if self.pressed {
-                        bg = COLOUR_PRESS;
-                    } else {
-                        bg = COLOUR_HOVER;
-                    }
+        for (i, character) in ALPHABET.iter().enumerate() {
+            let mut bg = COLOUR_BG;
+            if i == self.target {
+                if self.pressed {
+                    bg = COLOUR_PRESS;
+                } else {
+                    bg = COLOUR_HOVER;
                 }
-
-                screen
-                    .draw_rectangle(&bg, self.x + i * 6, self.y + j * 8 + 8, 6, 8)
-                    .await?;
-
-                screen
-                    .draw_text(
-                        &COLOUR_TEXT,
-                        character,
-                        self.x + i * 6 + 1,
-                        self.y + j * 8 + 9,
-                    )
-                    .await?;
             }
+
+            let row = i / 10;
+            let col = i % 10;
+
+            screen
+                .draw_rectangle(&bg, self.x + col * 6, self.y + row * 8 + 8, 6, 8)
+                .await?;
+
+            screen
+                .draw_text(
+                    &COLOUR_TEXT,
+                    character,
+                    self.x + col * 6 + 1,
+                    self.y + row * 8 + 9,
+                )
+                .await?;
         }
 
         let mut content = self.get_content();

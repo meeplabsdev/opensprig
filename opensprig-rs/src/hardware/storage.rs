@@ -1,4 +1,4 @@
-use crate::{mutex_device::MutexDevice, types::Error};
+use crate::{mutex_device::MutexDevice, slice_at_needle, types::Error};
 use embassy_rp::{
     Peri,
     gpio::{Level, Output, Pin},
@@ -8,9 +8,12 @@ use embassy_sync::{
     blocking_mutex::Mutex as BlockingMutex, blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex,
 };
 use embassy_time::Delay;
-use embedded_sdmmc::{Mode, RawDirectory, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use embedded_sdmmc::{
+    LfnBuffer, Mode, RawDirectory, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager,
+};
 
 const MAX_DEPTH: usize = 256;
+const MAX_ENTRIES: usize = 256;
 
 #[derive(Default)]
 pub struct DummyTimesource();
@@ -58,7 +61,7 @@ impl<'a, T: Instance> Storage<'a, T> {
             .open_root_dir()?
             .to_raw_directory();
 
-        let mut storage = Self {
+        let storage = Self {
             volume_manager,
             root,
         };
@@ -72,10 +75,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(storage)
     }
 
-    async fn resolve<'p>(
-        &mut self,
-        path: &'p str,
-    ) -> Result<(Option<RawDirectory>, &'p str), Error> {
+    async fn resolve<'p>(&self, path: &'p str) -> Result<(Option<RawDirectory>, &'p str), Error> {
         let mut path = path.trim();
         if let Some(p) = path.strip_prefix("/") {
             path = p;
@@ -134,7 +134,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok((*dirs.get(count - 2).unwrap_or(&None), name))
     }
 
-    pub async fn exists(&mut self, path: &str) -> bool {
+    pub async fn exists(&self, path: &str) -> bool {
         let Ok((directory, name)) = self.resolve(path).await else {
             return false;
         };
@@ -150,31 +150,49 @@ impl<'a, T: Instance> Storage<'a, T> {
         found
     }
 
-    pub async fn list(&mut self, path: &str) -> Result<[Option<[u8; 12]>; 256], Error> {
+    pub async fn list(
+        &self,
+        path: &str,
+        mut filter: impl FnMut(&[u8]) -> bool,
+    ) -> Result<([[u8; 12]; MAX_ENTRIES], [[u8; 40]; MAX_ENTRIES]), Error> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
         let dir = mgr.open_dir(directory.unwrap_or(self.root), name)?;
         defmt::debug!("Opened {}", dir);
 
-        let mut output = [None; 256];
+        let mut output = ([[0u8; 12]; MAX_ENTRIES], [[0u8; 40]; MAX_ENTRIES]);
         let mut i = 0;
 
-        mgr.iterate_dir(dir, |entry| {
+        let mut lfn_storage = [0u8; 40];
+        let mut lfn_buffer = LfnBuffer::new(&mut lfn_storage);
+        mgr.iterate_dir_lfn(dir, &mut lfn_buffer, |entry, lfn| {
+            let mut s_item = [0u8; 12];
+            let mut l_item = [0u8; 40];
+
             let name = entry.name.base_name();
             let extension = entry.name.extension();
-            let mut item = [0u8; 12];
 
             if entry.attributes.is_directory() {
-                item[..name.len()].copy_from_slice(name);
+                s_item[..name.len()].copy_from_slice(name);
             } else {
-                item[..name.len()].copy_from_slice(name);
-                item[name.len()] = b'.';
-                item[name.len() + 1..name.len() + extension.len() + 1].copy_from_slice(extension);
+                s_item[..name.len()].copy_from_slice(name);
+                s_item[name.len()] = b'.';
+                s_item[name.len() + 1..name.len() + extension.len() + 1].copy_from_slice(extension);
             }
 
-            output[i] = Some(item);
-            i += 1;
+            if let Some(name) = lfn {
+                l_item[..name.len()].copy_from_slice(name.as_bytes());
+            } else {
+                l_item[..12].copy_from_slice(&s_item);
+            }
+
+            l_item.make_ascii_lowercase();
+            if filter(slice_at_needle(&l_item, 0)) {
+                output.0[i] = s_item;
+                output.1[i] = l_item;
+                i += 1;
+            }
         })?;
 
         mgr.close_dir(dir)?;
@@ -185,7 +203,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(output)
     }
 
-    pub async fn write(&mut self, path: &str, buffer: &[u8], mode: Mode) -> Result<(), Error> {
+    pub async fn write(&self, path: &str, buffer: &[u8], mode: Mode) -> Result<(), Error> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
@@ -200,11 +218,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(())
     }
 
-    pub async fn read<const S: usize>(
-        &mut self,
-        path: &str,
-        offset: u32,
-    ) -> Result<[u8; S], Error> {
+    pub async fn read<const S: usize>(&self, path: &str, offset: u32) -> Result<[u8; S], Error> {
         let (directory, name) = self.resolve(path).await?;
         let mgr = self.volume_manager.lock().await;
 
@@ -236,7 +250,7 @@ impl<'a, T: Instance> Storage<'a, T> {
     }
 
     pub async fn read_into(
-        &mut self,
+        &self,
         path: &str,
         buffer: &mut [u8],
         mut on_chunk: impl FnMut(u32, &[u8]) -> Result<(), Error>,
@@ -280,11 +294,11 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(offset)
     }
 
-    pub async fn create(&mut self, path: &str) -> Result<(), Error> {
+    pub async fn create(&self, path: &str) -> Result<(), Error> {
         self.write(path, &[], Mode::ReadWriteCreate).await
     }
 
-    pub async fn delete(&mut self, path: &str) -> Result<(), Error> {
+    pub async fn delete(&self, path: &str) -> Result<(), Error> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
@@ -297,7 +311,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(())
     }
 
-    pub async fn file_size(&mut self, path: &str) -> Result<u32, Error> {
+    pub async fn file_size(&self, path: &str) -> Result<u32, Error> {
         let (directory, name) = self.resolve(path).await?;
         let mgr = self.volume_manager.lock().await;
         let dir = directory.unwrap_or(self.root);
