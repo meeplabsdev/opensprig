@@ -1,0 +1,13 @@
+[package]
+name = "bdf_parser"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+harness = false
+
+[dependencies]
+anyhow = { version = "1.0.104", default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
