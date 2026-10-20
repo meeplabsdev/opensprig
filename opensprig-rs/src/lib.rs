@@ -27,10 +27,17 @@ macro_rules! init {
         use embassy_sync::blocking_mutex::Mutex as BlockingMutex;
         use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
         use embassy_time::Timer;
+        use embedded_alloc::LlffHeap as Heap;
         use opensprig_rs::hardware::{Screen, Speaker, Storage};
         use opensprig_rs::types::Colour;
         use opensprig_rs::{button, clm, fw, init, nvram, pwm_led_a};
         use static_cell::StaticCell;
+
+        #[global_allocator]
+        static HEAP: Heap = Heap::empty();
+        unsafe {
+            embedded_alloc::init!(HEAP, 1024);
+        }
 
         #[embassy_executor::task]
         async fn cyw43_task(
