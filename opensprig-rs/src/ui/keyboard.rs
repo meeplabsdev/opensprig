@@ -1,4 +1,5 @@
 use crate::{
+    font,
     hardware::Screen,
     types::Error,
     ui::{COLOUR_BG, COLOUR_HOVER, COLOUR_PRESS, COLOUR_TEXT},
@@ -106,6 +107,7 @@ impl Keyboard {
             screen
                 .draw_text(
                     &COLOUR_TEXT,
+                    font::bdf_fourbysix().await?,
                     character,
                     self.x + col * 6 + 1,
                     self.y + row * 8 + 9,
@@ -122,7 +124,13 @@ impl Keyboard {
             .draw_rectangle(&COLOUR_HOVER, self.x, self.y, 60, 8)
             .await?;
         screen
-            .draw_text(&COLOUR_TEXT, content, self.x + 1, self.y + 1)
+            .draw_text(
+                &COLOUR_TEXT,
+                font::bdf_fourbysix().await?,
+                content,
+                self.x + 1,
+                self.y + 1,
+            )
             .await?;
 
         Ok(())

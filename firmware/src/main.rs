@@ -13,9 +13,9 @@ use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
 use embassy_time::Timer;
 use opensprig_rs::hardware::Storage;
-use opensprig_rs::types::Error;
+use opensprig_rs::types::{DebugError, Result};
 use opensprig_rs::ui::List;
-use opensprig_rs::{init, slice_at_needle, utf8_from_u8};
+use opensprig_rs::{err, init, slice_at_needle, utf8_from_u8};
 
 const PROGRAM_ADDRESS: u32 = 0x1008_0000;
 const PROGRAM_LENGTH: u32 = 0x13_E000;
@@ -48,23 +48,27 @@ async fn load(
     storage: &Storage<'static, SPI0>,
     mut flash: Flash<'static, FLASH, Blocking, TOTAL_FLASH_SIZE>,
     path: &str,
-) -> Result<u32, Error> {
+) -> Result<u32> {
     let size = storage.file_size(path).await?;
     if size == 0 {
-        return Err(Error::new("target is empty"));
+        return err!("target is empty");
     }
 
     let erase_len = (size + (ERASE_SIZE as u32 - 1)) & !(ERASE_SIZE as u32 - 1);
     if erase_len > PROGRAM_LENGTH {
-        return Err(Error::new("target too large for PROGRAM partition"));
+        return err!("target too large for PROGRAM partition");
     }
 
-    flash.blocking_erase(PROGRAM_OFFSET, PROGRAM_OFFSET + erase_len)?;
+    flash
+        .blocking_erase(PROGRAM_OFFSET, PROGRAM_OFFSET + erase_len)
+        .map_err(DebugError)?;
 
     let mut buffer = [0u8; READ_CHUNK_SIZE];
     let written = storage
         .read_into(path, &mut buffer, |offset, data| {
-            flash.blocking_write(PROGRAM_OFFSET + offset, data)?;
+            flash
+                .blocking_write(PROGRAM_OFFSET + offset, data)
+                .map_err(DebugError)?;
             Ok(())
         })
         .await?;

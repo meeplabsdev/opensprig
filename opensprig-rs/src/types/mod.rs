@@ -1,6 +1,6 @@
 mod colour;
 mod error;
 
-pub use colour::Colour;
-pub use colour::rgb;
-pub use error::Error;
+pub use anyhow::anyhow as _anyhow;
+pub use colour::{Colour, rgb};
+pub use error::{DebugError, DisplayError, Error, NonStdError, Result};

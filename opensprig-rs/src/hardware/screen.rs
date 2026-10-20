@@ -1,11 +1,12 @@
 use crate::{
-    font::FOURBYSIX,
-    types::{Colour, Error},
+    err,
+    types::{Colour, Error, NonStdError, Result},
 };
+use bdf_parser::{Font, Glyph};
 use embassy_rp::{
     Peri,
     gpio::{Level, Output, Pin},
-    spi::{self, Async, Instance, Spi},
+    spi::{Async, Instance, Spi},
 };
 use embassy_sync::{
     blocking_mutex::Mutex as BlockingMutex, blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex,
@@ -93,7 +94,7 @@ impl<'a, T: Instance> Screen<'a, T> {
         dc: Peri<'a, impl Pin>,
         rst: Peri<'a, impl Pin>,
         backlight: Peri<'a, impl Pin>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         static PIXELS: StaticCell<[u16; SCREEN_SIZE]> = StaticCell::new();
         let pixels = PIXELS.init([0u16; SCREEN_SIZE]);
 
@@ -138,29 +139,29 @@ impl<'a, T: Instance> Screen<'a, T> {
         nop3!(self.rst.lock().await.set_high());
     }
 
-    async fn spi_command(&self, x: u8) -> Result<(), spi::Error> {
+    async fn spi_command(&self, x: u8) -> Result<()> {
         self.dc_low().await;
-        unsafe { self.spi.lock_mut(|s| s.blocking_write(&[x])) }
+        Ok(unsafe { self.spi.lock_mut(|s| s.blocking_write(&[x])) }.map_err(NonStdError)?)
     }
 
-    async fn spi_data(&self, x: &[u8]) -> Result<(), spi::Error> {
+    async fn spi_data(&self, x: &[u8]) -> Result<()> {
         self.dc_high().await;
-        unsafe { self.spi.lock_mut(|s| s.blocking_write(x)) }
+        Ok(unsafe { self.spi.lock_mut(|s| s.blocking_write(x)) }.map_err(NonStdError)?)
     }
 
-    async fn write_command(&self, cmd: u8) -> Result<(), Error> {
+    async fn write_command(&self, cmd: u8) -> Result<()> {
         self.cs_low().await;
         self.dc_low().await;
-        (unsafe { self.spi.lock_mut(|s| s.blocking_write(&[cmd]))? });
+        unsafe { self.spi.lock_mut(|s| s.blocking_write(&[cmd])) }.map_err(NonStdError)?;
         self.cs_high().await;
 
         Ok(())
     }
 
-    async fn write_data(&self, data: &[u8]) -> Result<(), Error> {
+    async fn write_data(&self, data: &[u8]) -> Result<()> {
         self.cs_low().await;
         self.dc_high().await;
-        (unsafe { self.spi.lock_mut(|s| s.blocking_write(data))? });
+        unsafe { self.spi.lock_mut(|s| s.blocking_write(data)) }.map_err(NonStdError)?;
         self.cs_high().await;
 
         Ok(())
@@ -175,7 +176,7 @@ impl<'a, T: Instance> Screen<'a, T> {
         Timer::after_millis(10).await;
     }
 
-    async fn init_screen_tft(&self) -> Result<(), Error> {
+    async fn init_screen_tft(&self) -> Result<()> {
         self.reset().await;
         self.dc_low().await;
 
@@ -251,7 +252,7 @@ impl<'a, T: Instance> Screen<'a, T> {
         Ok(())
     }
 
-    pub async fn blit(&self) -> Result<(), Error> {
+    pub async fn blit(&self) -> Result<()> {
         self.cs_low().await;
 
         self.spi_command(st7735::CASET).await?;
@@ -269,7 +270,9 @@ impl<'a, T: Instance> Screen<'a, T> {
                 SCREEN_SIZE * 2,
             );
 
-            self.spi.lock_mut(|s| s.blocking_write(data))?
+            self.spi
+                .lock_mut(|s| s.blocking_write(data))
+                .map_err(NonStdError)?
         };
 
         self.cs_high().await;
@@ -285,9 +288,9 @@ impl<'a, T: Instance> Screen<'a, T> {
         }
     }
 
-    pub async fn set_pixel(&self, colour: &Colour, x: usize, y: usize) -> Result<(), Error> {
+    pub async fn set_pixel(&self, colour: &Colour, x: usize, y: usize) -> Result<()> {
         if x > SCREEN_WIDTH || y > SCREEN_HEIGHT {
-            return Err(Error::new("Position out of screen bounds"));
+            return err!("Position out of screen bounds");
         }
 
         (&mut (*self.pixels.lock().await))[x * SCREEN_HEIGHT + y] = colour.as_16bit();
@@ -306,13 +309,13 @@ impl<'a, T: Instance> Screen<'a, T> {
         y: usize,
         w: usize,
         h: usize,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if x > SCREEN_WIDTH || y > SCREEN_HEIGHT {
-            return Err(Error::new("Position out of screen bounds"));
+            return err!("Position out of screen bounds");
         } else if x + w > SCREEN_WIDTH || y + h > SCREEN_HEIGHT {
-            return Err(Error::new("Rectangle out of screen bounds"));
+            return err!("Rectangle out of screen bounds");
         } else if w == 0 || h == 0 {
-            return Err(Error::new("Rectangle size out of bounds"));
+            return err!("Rectangle size out of bounds");
         }
 
         for col in x..(x + w) {
@@ -324,39 +327,62 @@ impl<'a, T: Instance> Screen<'a, T> {
         Ok(())
     }
 
-    pub async fn draw_character(
+    pub async fn draw_glyph(
         &self,
         colour: &Colour,
-        ord: usize,
+        font: &Font<'_>,
+        glyph: &Glyph,
         x: usize,
         y: usize,
-    ) -> Result<(), Error> {
-        if ord < 32 || ord - 32 >= FOURBYSIX.len() {
-            return Err(Error::new("Ordinal out of range"));
-        }
-
-        let character = FOURBYSIX[ord - 32];
-        for i in 0..24 {
-            if ((character >> i) & 1) == 1 {
-                let cx = x + 4 - (i % 4);
-                let cy = y + 6 - (i / 4);
-                self.set_pixel(colour, cx, cy).await?;
+    ) -> Result<()> {
+        for dx in 0..glyph.size.0 {
+            for dy in 0..glyph.size.1 {
+                if font.pixel(glyph, x, y)? {
+                    self.set_pixel(colour, x + dx, y + dy).await?;
+                }
             }
         }
 
         Ok(())
     }
 
+    // pub async fn draw_character(
+    //     &self,
+    //     colour: &Colour,
+    //     ord: usize,
+    //     x: usize,
+    //     y: usize,
+    // ) -> Result<(), Error> {
+    //     if ord < 32 || ord - 32 >= FOURBYSIX.len() {
+    //         return Err(Error::new("Ordinal out of range"));
+    //     }
+
+    //     let character = FOURBYSIX[ord - 32];
+    //     for i in 0..24 {
+    //         if ((character >> i) & 1) == 1 {
+    //             let cx = x + 4 - (i % 4);
+    //             let cy = y + 6 - (i / 4);
+    //             self.set_pixel(colour, cx, cy).await?;
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
+
     pub async fn draw_text(
         &self,
         colour: &Colour,
+        font: &Font<'_>,
         content: &str,
         x: usize,
         y: usize,
-    ) -> Result<(), Error> {
-        for (i, c) in content.char_indices() {
-            self.draw_character(colour, c as usize, x + i * 4, y)
-                .await?;
+    ) -> Result<()> {
+        let mut cx = x;
+        for c in content.chars() {
+            let glyph = font.glyph(c).ok_or(Error::msg("failed to get glyph"))?;
+
+            self.draw_glyph(colour, font, glyph, cx, y).await?;
+            cx += glyph.size.0;
         }
 
         Ok(())

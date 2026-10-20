@@ -1,9 +1,9 @@
 #![no_std]
 #![no_main]
 
-mod font;
 mod mutex_device;
 
+pub mod font;
 pub mod hardware;
 pub mod types;
 pub mod ui;

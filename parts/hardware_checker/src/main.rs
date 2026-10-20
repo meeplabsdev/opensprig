@@ -14,6 +14,7 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, PIO0, SPI0};
 use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
 use embassy_time::Timer;
+use opensprig_rs::font;
 use opensprig_rs::hardware::{Speaker, Storage};
 use opensprig_rs::init;
 use opensprig_rs::types::Colour;
@@ -49,7 +50,13 @@ async fn main(spawner: Spawner) {
     screen.draw_flood(&Colour::new(0, 0, 0)).await;
 
     screen
-        .draw_text(&Colour::new(255, 255, 255), "Hello, World!", 5, 5)
+        .draw_text(
+            &Colour::new(255, 255, 255),
+            font::bdf_fourbysix().await.unwrap(),
+            "Hello, World!",
+            5,
+            5,
+        )
         .await
         .unwrap();
 

@@ -1,4 +1,5 @@
 use crate::{
+    font,
     hardware::Screen,
     types::{Colour, Error},
     ui::{COLOUR_BG, COLOUR_HOVER, COLOUR_TEXT},
@@ -74,7 +75,13 @@ impl<'s, 'i, T: Copy, U: Copy> List<'i, T, U> {
             screen.draw_rectangle(&bg, 0, i * 8, 160, 8).await?;
 
             screen
-                .draw_text(&COLOUR_TEXT, display(path), 1, i * 8 + 1)
+                .draw_text(
+                    &COLOUR_TEXT,
+                    font::bdf_fourbysix().await?,
+                    display(path),
+                    1,
+                    i * 8 + 1,
+                )
                 .await?;
         }
 

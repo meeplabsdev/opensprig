@@ -9,6 +9,7 @@ bench = false
 harness = false
 
 [dependencies]
+anyhow = { version = "1.0.104", default-features = false }
 atomic_float = "1.1.0"
 cortex-m-rt = "0.7.5"
 defmt = "1.0.1"
@@ -18,6 +19,9 @@ embedded-hal-bus = "0.3.0"
 embedded-sdmmc = { version = "0.9.0", features = ["defmt-log"], default-features = false }
 micromath = "2.1.0"
 static_cell = "2.1.1"
+
+[dependencies.bdf_parser]
+path = "../bdf_parser"
 
 [dependencies.cortex-m]
 version = "0.7.7"

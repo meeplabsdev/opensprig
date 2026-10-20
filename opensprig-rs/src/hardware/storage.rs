@@ -1,4 +1,9 @@
-use crate::{mutex_device::MutexDevice, slice_at_needle, types::Error};
+use crate::{
+    err,
+    mutex_device::MutexDevice,
+    slice_at_needle,
+    types::{DebugError, Result},
+};
 use embassy_rp::{
     Peri,
     gpio::{Level, Output, Pin},
@@ -46,19 +51,21 @@ impl<'a, T: Instance> Storage<'a, T> {
     pub async fn new(
         spi: &'a BlockingMutex<ThreadModeRawMutex, Spi<'a, T, Async>>,
         cs: Peri<'a, impl Pin>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let sd_device = MutexDevice::new(spi, Output::new(cs, Level::High), Delay).unwrap();
         let sd_card = SdCard::new(sd_device, Delay);
 
-        let sd_size = sd_card.num_bytes()?;
+        let sd_size = sd_card.num_bytes().map_err(DebugError)?;
         defmt::debug!("Card size: {} bytes", sd_size);
 
         let volume_manager = Mutex::new(VolumeManager::new(sd_card, DummyTimesource::default()));
         let root = volume_manager
             .lock()
             .await
-            .open_volume(VolumeIdx(0))?
-            .open_root_dir()?
+            .open_volume(VolumeIdx(0))
+            .map_err(DebugError)?
+            .open_root_dir()
+            .map_err(DebugError)?
             .to_raw_directory();
 
         let storage = Self {
@@ -75,7 +82,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(storage)
     }
 
-    async fn resolve<'p>(&self, path: &'p str) -> Result<(Option<RawDirectory>, &'p str), Error> {
+    async fn resolve<'p>(&self, path: &'p str) -> Result<(Option<RawDirectory>, &'p str)> {
         let mut path = path.trim();
         if let Some(p) = path.strip_prefix("/") {
             path = p;
@@ -85,7 +92,7 @@ impl<'a, T: Instance> Storage<'a, T> {
         }
 
         if path.contains("./") {
-            return Err(Error::new("Path cannot contain \"./\" or \"../\""));
+            return err!("Path cannot contain \"./\" or \"../\"");
         }
 
         let mgr = self.volume_manager.lock().await;
@@ -93,9 +100,9 @@ impl<'a, T: Instance> Storage<'a, T> {
         let count = parts.clone().count();
 
         if count > MAX_DEPTH {
-            return Err(Error::new("Path too long"));
+            return err!("Path too long");
         } else if count == 0 {
-            return Err(Error::new("Invalid path"));
+            return err!("Invalid path");
         } else if count == 1 {
             return Ok((None, parts.last().unwrap()));
         }
@@ -114,21 +121,22 @@ impl<'a, T: Instance> Storage<'a, T> {
 
                 dirs[i] = match mgr.open_dir(dir, part) {
                     Ok(d) => Some(d),
-                    Err(e) => return Err(e.into()),
+                    Err(e) => return Err(DebugError(e).into()),
                 };
 
                 defmt::debug!("Opened dir {}", dirs[i]);
             }
         }
 
-        mgr.find_directory_entry(dirs[count - 2].unwrap(), name)?;
+        mgr.find_directory_entry(dirs[count - 2].unwrap(), name)
+            .map_err(DebugError)?;
 
         for i in (0..count - 2).rev() {
             if dirs[i] == None {
                 continue;
             }
 
-            mgr.close_dir(dirs[i].unwrap())?;
+            mgr.close_dir(dirs[i].unwrap()).map_err(DebugError)?;
         }
 
         Ok((*dirs.get(count - 2).unwrap_or(&None), name))
@@ -154,11 +162,13 @@ impl<'a, T: Instance> Storage<'a, T> {
         &self,
         path: &str,
         mut filter: impl FnMut(&[u8]) -> bool,
-    ) -> Result<([[u8; 12]; MAX_ENTRIES], [[u8; 40]; MAX_ENTRIES]), Error> {
+    ) -> Result<([[u8; 12]; MAX_ENTRIES], [[u8; 40]; MAX_ENTRIES])> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
-        let dir = mgr.open_dir(directory.unwrap_or(self.root), name)?;
+        let dir = mgr
+            .open_dir(directory.unwrap_or(self.root), name)
+            .map_err(DebugError)?;
         defmt::debug!("Opened {}", dir);
 
         let mut output = ([[0u8; 12]; MAX_ENTRIES], [[0u8; 40]; MAX_ENTRIES]);
@@ -193,32 +203,35 @@ impl<'a, T: Instance> Storage<'a, T> {
                 output.1[i] = l_item;
                 i += 1;
             }
-        })?;
+        })
+        .map_err(DebugError)?;
 
-        mgr.close_dir(dir)?;
+        mgr.close_dir(dir).map_err(DebugError)?;
         if let Some(d) = directory {
-            mgr.close_dir(d)?;
+            mgr.close_dir(d).map_err(DebugError)?;
         }
 
         Ok(output)
     }
 
-    pub async fn write(&self, path: &str, buffer: &[u8], mode: Mode) -> Result<(), Error> {
+    pub async fn write(&self, path: &str, buffer: &[u8], mode: Mode) -> Result<()> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
-        let file = mgr.open_file_in_dir(directory.unwrap_or(self.root), name, mode)?;
-        mgr.write(file, buffer)?;
-        mgr.close_file(file)?;
+        let file = mgr
+            .open_file_in_dir(directory.unwrap_or(self.root), name, mode)
+            .map_err(DebugError)?;
+        mgr.write(file, buffer).map_err(DebugError)?;
+        mgr.close_file(file).map_err(DebugError)?;
 
         if let Some(d) = directory {
-            mgr.close_dir(d)?;
+            mgr.close_dir(d).map_err(DebugError)?;
         }
 
         Ok(())
     }
 
-    pub async fn read<const S: usize>(&self, path: &str, offset: u32) -> Result<[u8; S], Error> {
+    pub async fn read<const S: usize>(&self, path: &str, offset: u32) -> Result<[u8; S]> {
         let (directory, name) = self.resolve(path).await?;
         let mgr = self.volume_manager.lock().await;
 
@@ -229,14 +242,15 @@ impl<'a, T: Instance> Storage<'a, T> {
                 if let Some(d) = directory {
                     let _ = mgr.close_dir(d);
                 }
-                return Err(e.into());
+
+                return Err(DebugError(e).into());
             }
         };
 
         let mut buf = [0u8; S];
-        let result: Result<(), Error> = (|| {
-            mgr.file_seek_from_start(file, offset)?;
-            mgr.read(file, &mut buf)?;
+        let result: Result<()> = (|| {
+            mgr.file_seek_from_start(file, offset).map_err(DebugError)?;
+            mgr.read(file, &mut buf).map_err(DebugError)?;
             Ok(())
         })();
 
@@ -253,8 +267,8 @@ impl<'a, T: Instance> Storage<'a, T> {
         &self,
         path: &str,
         buffer: &mut [u8],
-        mut on_chunk: impl FnMut(u32, &[u8]) -> Result<(), Error>,
-    ) -> Result<u32, Error> {
+        mut on_chunk: impl FnMut(u32, &[u8]) -> Result<()>,
+    ) -> Result<u32> {
         let (directory, name) = self.resolve(path).await?;
         let mgr = self.volume_manager.lock().await;
         let dir = directory.unwrap_or(self.root);
@@ -265,14 +279,15 @@ impl<'a, T: Instance> Storage<'a, T> {
                 if let Some(d) = directory {
                     let _ = mgr.close_dir(d);
                 }
-                return Err(e.into());
+
+                return Err(DebugError(e).into());
             }
         };
 
         let mut offset: u32 = 0;
-        let result: Result<(), Error> = (|| {
+        let result: Result<()> = (|| {
             loop {
-                let read = mgr.read(file, buffer)?;
+                let read = mgr.read(file, buffer).map_err(DebugError)?;
                 if read == 0 {
                     break;
                 }
@@ -294,24 +309,25 @@ impl<'a, T: Instance> Storage<'a, T> {
         Ok(offset)
     }
 
-    pub async fn create(&self, path: &str) -> Result<(), Error> {
+    pub async fn create(&self, path: &str) -> Result<()> {
         self.write(path, &[], Mode::ReadWriteCreate).await
     }
 
-    pub async fn delete(&self, path: &str) -> Result<(), Error> {
+    pub async fn delete(&self, path: &str) -> Result<()> {
         let (directory, name) = self.resolve(path).await?;
 
         let mgr = self.volume_manager.lock().await;
-        mgr.delete_file_in_dir(directory.unwrap_or(self.root), name)?;
+        mgr.delete_file_in_dir(directory.unwrap_or(self.root), name)
+            .map_err(DebugError)?;
 
         if let Some(d) = directory {
-            mgr.close_dir(d)?;
+            mgr.close_dir(d).map_err(DebugError)?;
         }
 
         Ok(())
     }
 
-    pub async fn file_size(&self, path: &str) -> Result<u32, Error> {
+    pub async fn file_size(&self, path: &str) -> Result<u32> {
         let (directory, name) = self.resolve(path).await?;
         let mgr = self.volume_manager.lock().await;
         let dir = directory.unwrap_or(self.root);
@@ -322,7 +338,7 @@ impl<'a, T: Instance> Storage<'a, T> {
             let _ = mgr.close_dir(d);
         }
 
-        Ok(result?)
+        Ok(result.map_err(DebugError)?)
     }
 }
 
