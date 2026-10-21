@@ -15,6 +15,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: carlosperate/arm-none-eabi-gcc-action@v1
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> build
+          cache-all-crates: true
 
       - name: Use memory.x for firmware
         run: cp memory.x.firmware memory.x
