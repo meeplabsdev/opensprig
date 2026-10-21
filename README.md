@@ -3,6 +3,8 @@
 <img width="1920" height="1080" alt="frame_73" src="https://github.com/user-attachments/assets/be8c0990-6044-48b6-9b5f-5439ac825ea1" />
 
 Custom firmware for the Sprig! Makes use of the currently unused features like the SD slot built into the screen and the wireless functionality of the Pico W.
+
+---
 The current working branch is [`rust`](https://github.com/meeplabsdev/opensprig/tree/rust). This branch is from the POC written in C++, and only has (experimental) support for the following:
 - LEDs
 - buttons
