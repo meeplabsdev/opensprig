@@ -20,8 +20,17 @@ It also comes with some examples to show off these features:
 - hardware_checker - displays pressed button on screen, flashes LEDs, plays audio read from the SD card, writes "Hello, world!" to the screen using custom parsed font
 
 ## Flashing
-First you must build the firmware. A script is provided to assist with this:
-`./build.sh <--debug>`. This will build the firmware and all apps (optionally as a debug release) using the correct memory.x for each. The output will be in `build/thumbv6m-none-eabi/release/`, with the firmware being named `firmware` and the applications each being `name.bin`. You can flash the firmware like any normal pico firmware, for example: `probe-rs run --chip RP2040 firmware`. You will also need to place the proprietary cyw43 firmware, which can be done with `./cyw43/place.sh`. This script assumes probe-rs is being used. If this is not the case, you must place the cyw43 bins at the addresses specified inside the `place.sh` script.
+First you must obtain a build of the firmware. There are two ways to do this:
+
+- **Building it yourself**
+
+    A script is provided to assist with this: `./build.sh <--debug>`. This will build the firmware and all apps (optionally as a debug release) using the correct memory.x for each. The output will be in `build/thumbv6m-none-eabi/release/`, with the firmware being named `firmware` and the applications each being `name.bin`.
+
+- **Prebuilt binaries**
+
+    This repository comes with a github action which automatically builds the firmware and applications when new changes are pushed. You can download the latest prebuilt binary by going to `Actions`, selecting the latest build, scrolling down to `Artifacts` and downloading the `firmware` artifact, which contains a zip of the firmware and applications. You might also try [this link](https://nightly.link/meeplabsdev/opensprig/workflows/release/rust/firmware.zip) to immediately download the aforementioned.
+
+You can flash the firmware like any normal pico firmware, for example: `probe-rs run --chip RP2040 firmware`. You will also need to place the proprietary cyw43 firmware, which can be done with `./cyw43/place.sh`. This script assumes probe-rs is being used. If this is not the case, you must place the cyw43 bins at the addresses specified inside the `place.sh` script.
 
 The firmware is now successfully written to the pico, but booting will currently show no options on the screen. This is because no applications are present on the SD card. Prepare an SD card in the FAT32 format and create a directory `/program/`, placing the built applications (`name.bin`) here. Plug the SD into the sprig (the slot is in the top of the screen) and reboot it. The applications should be present in a list. It can be navigated using using the left dpad "up" and "down", and selected using the right dpad "left". When a program selected, it will reboot into the program. On the next reboot, it will return to the main firmware.
 
