@@ -36,7 +36,7 @@ macro_rules! init {
         #[global_allocator]
         static HEAP: Heap = Heap::empty();
         unsafe {
-            embedded_alloc::init!(HEAP, 1024);
+            embedded_alloc::init!(HEAP, 65536);
         }
 
         #[embassy_executor::task]
