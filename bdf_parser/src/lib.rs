@@ -425,13 +425,24 @@ impl<'a> FontParser<'a> {
             ));
         };
 
-        for val in vals {
-            let v = match hex::decode(val) {
-                Err(e) => return Err(anyhow!("{e:?}")),
-                Ok(v) => v,
-            };
+        let width_bytes = (bbx.0 / 8) + 1;
+        let current_spare = self.glyph_data.capacity() - self.glyph_data.len();
+        let required_spare = height * width_bytes;
+        if current_spare < required_spare {
+            self.glyph_data.reserve(required_spare - current_spare);
+        }
 
-            self.glyph_data.extend(v);
+        for val in vals {
+            let data = val.as_bytes();
+            if data.len() % 2 != 0 {
+                return Err(anyhow!("odd hex length"));
+            }
+
+            // decode hex
+            for i in 0..(data.len() / 2) {
+                self.glyph_data
+                    .push(hex_val(data[2 * i], 2 * i)? << 4 | hex_val(data[2 * i + 1], 2 * i + 1)?);
+            }
         }
 
         Ok(())
@@ -567,4 +578,16 @@ pub struct Glyph {
     pub size: (usize, usize),
     pub offset: (isize, isize),
     data: Vec<u8>,
+}
+
+fn hex_val(c: u8, idx: usize) -> Result<u8> {
+    match c {
+        b'A'..=b'F' => Ok(c - b'A' + 10),
+        b'a'..=b'f' => Ok(c - b'a' + 10),
+        b'0'..=b'9' => Ok(c - b'0'),
+        _ => Err(anyhow!(
+            "invalid hex character '{}' at index {idx}",
+            c as char
+        )),
+    }
 }
