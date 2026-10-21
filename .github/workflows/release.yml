@@ -1,0 +1,45 @@
+name: Release Firmware & Apps
+on:
+  push:
+    branches: [rust]
+env:
+  CARGO_TERM_COLOR: always
+  DEFMT_LOG: off
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: carlosperate/arm-none-eabi-gcc-action@v1
+
+      - name: Use memory.x for firmware
+        run: cp memory.x.firmware memory.x
+      - name: Build release
+        run: cargo build --release
+      - name: Clean binary
+        run: arm-none-eabi-objcopy --remove-section=.defmt --remove-section=.comment build/thumbv6m-none-eabi/release/firmware
+
+      - name: Use memory.x for applications
+        run: cp memory.x.parts memory.x
+      - name: Build applications
+        shell: bash
+        run: |
+          for item in parts/*; do
+            [ -e "$item" ] || continue
+            if [[ -d "$item" ]]; then
+              name="$(basename "$item")"
+              (cd "$item" && RUSTFLAGS="-Clink-arg=-Tlink.x -Clink-arg=-Tdefmt.x" cargo build --release)
+              arm-none-eabi-objcopy --remove-section=.defmt --remove-section=.comment --remove-section=.boot2 -O binary "build/thumbv6m-none-eabi/release/$name" "build/thumbv6m-none-eabi/release/$name.bin"
+            fi
+          done
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/thumbv6m-none-eabi/release/firmware
+          if-no-files-found: error
+      - name: Upload application binaries
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/thumbv6m-none-eabi/release/*.bin
+          if-no-files-found: error
