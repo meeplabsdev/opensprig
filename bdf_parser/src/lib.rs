@@ -24,9 +24,8 @@ struct FontParser<'a> {
     vvector: Option<(usize, usize)>,
 
     expected_glyphs: usize,
-    glyphs: BTreeMap<&'a str, Glyph>,
+    glyphs: BTreeMap<isize, Glyph>,
 
-    glyph_name: &'a str,
     glyph_encoding: isize,
     glyph_swidth: Option<(usize, usize)>,
     glyph_dwidth: Option<(usize, usize)>,
@@ -60,7 +59,6 @@ impl<'a> FontParser<'a> {
             expected_glyphs: 0,
             glyphs: BTreeMap::new(),
 
-            glyph_name: "",
             glyph_encoding: 0,
             glyph_swidth: None,
             glyph_dwidth: None,
@@ -75,29 +73,21 @@ impl<'a> FontParser<'a> {
     fn parse(&mut self, content: &'a str) -> Result<Font<'a>> {
         self.lines = Some(content.lines());
         while let Some(line) = self.lines.as_mut().and_then(|l| l.next()) {
-            let mut keys = line.split_whitespace();
-            let key = keys.next().context("line missing directive key")?;
-            let value = keys.next().unwrap_or("");
+            let keys = line
+                .split_once(|c: char| c.is_whitespace())
+                .unwrap_or((line, ""));
 
-            self.parse_directive(key, value)?;
+            self.parse_directive(keys.0, keys.1)?;
         }
-
-        let Some(bbx) = self.fontboundingbox else {
-            return Err(anyhow!("Expected FONTBOUNDINGBOX but did not find it"));
-        };
 
         let font = Font {
             name: self.name,
             point: self.size,
-            size: (bbx.0, bbx.1),
-            offset: (bbx.2, bbx.3),
-            mode: self.metricsset,
-            glyphs: self
-                .glyphs
-                .clone()
-                .into_iter()
-                .map(|(_, g)| (g.encoding, g))
-                .collect(),
+            ascent: self
+                .fontboundingbox
+                .context("FONTBOUNDINGBOX expected but not found")?
+                .1 as isize,
+            glyphs: self.glyphs.clone(),
         };
 
         Ok(font)
@@ -124,7 +114,7 @@ impl<'a> FontParser<'a> {
             "VVECTOR" => self.vvector(value),
 
             "CHARS" => self.chars(value),
-            "STARTCHAR" => self.startchar(value),
+            "STARTCHAR" => self.startchar(),
             "ENDCHAR" => self.endchar(),
             "ENCODING" => self.encoding(value),
             "BBX" => self.bbx(value),
@@ -367,7 +357,7 @@ impl<'a> FontParser<'a> {
         Ok(())
     }
 
-    fn startchar(&mut self, value: &'a str) -> Result<()> {
+    fn startchar(&mut self) -> Result<()> {
         if !self.within_glyphs {
             return Err(anyhow!("Saw STARTCHAR directive before glyphs started"));
         } else if self.within_glyph {
@@ -377,7 +367,6 @@ impl<'a> FontParser<'a> {
         }
 
         self.within_glyph = true;
-        self.glyph_name = value;
 
         Ok(())
     }
@@ -393,13 +382,13 @@ impl<'a> FontParser<'a> {
             10,
         )?;
 
-        if self.glyph_encoding == -1 {
-            self.glyph_encoding *= isize::from_str_radix(
-                vals.next().context("ENCODING directive missing integer")?,
-                10,
-            )?
-            .abs();
-        }
+        // if self.glyph_encoding == -1 {
+        //     self.glyph_encoding *= isize::from_str_radix(
+        //         vals.next().context("ENCODING directive missing integer")?,
+        //         10,
+        //     )?
+        //     .abs();
+        // }
 
         Ok(())
     }
@@ -455,7 +444,7 @@ impl<'a> FontParser<'a> {
 
         if let Some(swidth) = self.glyph_swidth.or(self.swidth)
             && let Some(dwidth) = self.glyph_dwidth.or(self.dwidth)
-            && let Some(bbx) = self.glyph_bbx
+            && let Some(bbx) = self.glyph_bbx.or(self.fontboundingbox)
         {
             let (swidth1, dwidth1) = if self.metricsset > 0 {
                 (
@@ -470,33 +459,40 @@ impl<'a> FontParser<'a> {
                 ((0, 0), (0, 0))
             };
 
-            let bbxoff1 = if self.metricsset > 0 {
+            // TODO: THIS IS WRONG I DID METRICSET > 0 ALL WRONG
+            let bbxoff1 = if self.metricsset == 2 {
                 let vvector = self.glyph_vvector.or(self.vvector).ok_or(anyhow!(
-                    "Expected VVECTOR for writing direction > 0 but did not find it"
+                    "Expected VVECTOR for writing direction == 0 but did not find it"
                 ))?;
                 (bbx.2 - vvector.0 as isize, bbx.3 - vvector.1 as isize)
             } else {
                 (0, 0)
             };
 
+            let offset = if self.metricsset == 0 {
+                (bbx.2, bbx.3)
+            // TODO: THIS IS WRONG I DID METRICSET > 0 ALL WRONG
+            } else if self.metricsset == 1 {
+                bbxoff1
+            } else {
+                (bbx.2 + bbxoff1.0, bbx.3 + bbxoff1.1)
+            };
+
             self.glyphs.insert(
-                self.glyph_name,
+                self.glyph_encoding,
                 Glyph {
-                    encoding: self.glyph_encoding,
                     swidth,
                     dwidth,
                     swidth1,
                     dwidth1,
                     size: (bbx.0, bbx.1),
-                    offset0: (bbx.2, bbx.3),
-                    offset1: bbxoff1,
+                    offset,
                     data: self.glyph_data.clone(),
                 },
             );
         }
 
         self.within_glyph = false;
-        self.glyph_name = "";
         self.glyph_encoding = 0;
         self.glyph_swidth = None;
         self.glyph_dwidth = None;
@@ -514,11 +510,11 @@ impl<'a> FontParser<'a> {
             return Err(anyhow!("Saw ENDFONT directive without starting the font"));
         }
 
-        if self.glyphs.len() != self.expected_glyphs {
-            return Err(anyhow!(
-                "The number of glyphs found was not equal to the number passed to CHARS"
-            ));
-        }
+        // if self.glyphs.len() != self.expected_glyphs {
+        //     return Err(anyhow!(
+        //         "The number of glyphs found was not equal to the number passed to CHARS"
+        //     ));
+        // }
 
         self.within_glyphs = false;
         self.within_font = false;
@@ -529,11 +525,9 @@ impl<'a> FontParser<'a> {
 
 #[derive(Clone)]
 pub struct Font<'a> {
-    name: &'a str,
-    point: (usize, usize, usize),
-    size: (usize, usize),
-    offset: (isize, isize),
-    mode: usize,
+    pub name: &'a str,
+    pub point: (usize, usize, usize),
+    pub ascent: isize,
     glyphs: BTreeMap<isize, Glyph>,
 }
 
@@ -551,47 +545,26 @@ impl<'a> Font<'a> {
     }
 
     pub fn pixel(&self, glyph: &Glyph, x: usize, y: usize) -> Result<bool> {
-        if x >= glyph.size.0 || y >= glyph.size.1 {
-            return Err(anyhow!("coordinate out of bounds"));
-        }
+        let row = y * ((glyph.size.0.min(1) - 1) / 8 + 1);
+        let byte_idx = row + x / 8;
+        let byte_rem = x % 8;
 
-        let offset = if self.mode == 0 {
-            glyph.offset0
-        } else if self.mode == 1 {
-            glyph.offset1
-        } else {
-            (
-                glyph.offset0.0 + glyph.offset1.0,
-                glyph.offset0.1 + glyph.offset1.1,
-            )
+        let Some(byte) = glyph.data.get(byte_idx) else {
+            return Ok(false);
         };
+        let bit = (byte << byte_rem) & 0b10000000;
 
-        let cx = (x as isize + self.offset.0 + offset.0).max(0) as usize;
-        let cy = (y as isize + self.offset.1 + offset.1).max(0) as usize;
-
-        let idx = cx * glyph.size.0 + cy;
-        let byte_idx = idx / 8;
-        let byte_rem = idx % 8;
-
-        let byte = glyph
-            .data
-            .get(byte_idx)
-            .context("data was not large enough to get pixel")?;
-        let bit = (byte << byte_rem) & 1;
-
-        Ok(bit == 1)
+        Ok(bit == 0b10000000)
     }
 }
 
 #[derive(Clone)]
 pub struct Glyph {
-    pub encoding: isize,
     pub swidth: (usize, usize),
     pub dwidth: (usize, usize),
     pub swidth1: (usize, usize),
     pub dwidth1: (usize, usize),
     pub size: (usize, usize),
-    offset0: (isize, isize),
-    offset1: (isize, isize),
+    pub offset: (isize, isize),
     data: Vec<u8>,
 }

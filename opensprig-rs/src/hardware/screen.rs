@@ -335,10 +335,18 @@ impl<'a, T: Instance> Screen<'a, T> {
         x: usize,
         y: usize,
     ) -> Result<()> {
-        for dx in 0..glyph.size.0 {
-            for dy in 0..glyph.size.1 {
-                if font.pixel(glyph, x, y)? {
-                    self.set_pixel(colour, x + dx, y + dy).await?;
+        let left = x as isize + glyph.offset.0;
+        let top = y as isize + font.ascent - glyph.offset.1 - glyph.size.1 as isize;
+
+        for dy in 0..glyph.size.1 {
+            for dx in 0..glyph.size.0 {
+                if font.pixel(glyph, dx, dy)? {
+                    self.set_pixel(
+                        colour,
+                        (left + dx as isize).max(0) as usize,
+                        (top + dy as isize).max(0) as usize,
+                    )
+                    .await?;
                 }
             }
         }
@@ -382,7 +390,7 @@ impl<'a, T: Instance> Screen<'a, T> {
             let glyph = font.glyph(c).ok_or(Error::msg("failed to get glyph"))?;
 
             self.draw_glyph(colour, font, glyph, cx, y).await?;
-            cx += glyph.size.0;
+            cx += glyph.dwidth.0;
         }
 
         Ok(())
