@@ -15,22 +15,23 @@ use panic_probe as _;
 #[macro_export]
 macro_rules! init {
     ($spawner:expr, $p:expr) => {{
-        use cyw43_pio::DEFAULT_CLOCK_DIVIDER;
-        use cyw43_pio::PioSpi;
+        use cyw43_pio::{DEFAULT_CLOCK_DIVIDER, PioSpi};
         use defmt::unwrap;
-        use embassy_rp::dma::Channel;
-        use embassy_rp::gpio::{Level, Output};
-        use embassy_rp::peripherals::{PIO0, SPI0};
-        use embassy_rp::pio::Pio;
-        use embassy_rp::spi::{Async, Config, Spi};
-        use embassy_rp::watchdog::Watchdog;
-        use embassy_sync::blocking_mutex::Mutex as BlockingMutex;
-        use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+        use embassy_rp::{
+            dma::Channel,
+            gpio::{Level, Output},
+            peripherals::{PIO0, SPI0},
+            pio::Pio,
+            spi::{Async, Config, Spi},
+            watchdog::Watchdog,
+        };
+        use embassy_sync::blocking_mutex::{Mutex as BlockingMutex, raw::ThreadModeRawMutex};
         use embassy_time::Timer;
         use embedded_alloc::LlffHeap as Heap;
-        use opensprig_rs::hardware::{Screen, Speaker, Storage};
-        use opensprig_rs::types::Colour;
-        use opensprig_rs::{button, clm, fw, init, nvram, pwm_led_a};
+        use opensprig_rs::{
+            hardware::{Screen, Speaker, Storage},
+            types::Colour,
+        };
         use static_cell::StaticCell;
 
         #[global_allocator]
@@ -69,10 +70,11 @@ macro_rules! init {
         static STATE: StaticCell<cyw43::State> = StaticCell::new();
         let state = STATE.init(cyw43::State::new());
 
-        let (net_device, mut control, runner) = cyw43::new(state, pwr, spi, fw!(), nvram!()).await;
+        let (net_device, mut control, runner) =
+            cyw43::new(state, pwr, spi, $crate::fw!(), $crate::nvram!()).await;
         $spawner.spawn(unwrap!(cyw43_task(runner)));
 
-        control.init(clm!()).await;
+        control.init($crate::clm!()).await;
         control
             .set_power_management(cyw43::PowerManagementMode::PowerSave)
             .await;
@@ -86,6 +88,10 @@ macro_rules! init {
             SPI.init(BlockingMutex::new(Spi::new(
                 $p.SPI0, $p.PIN_18, $p.PIN_19, $p.PIN_16, $p.DMA_CH2, $p.DMA_CH3, Irqs, spi_config,
             )));
+
+        static STORAGE: StaticCell<Storage<'static, SPI0>> = StaticCell::new();
+        let storage: &'static Storage<'static, SPI0> =
+            STORAGE.init(Storage::new(spi, $p.PIN_21).await.unwrap());
 
         static SCREEN: StaticCell<Screen<'static, SPI0>> = StaticCell::new();
         let screen: &'static Screen<'static, SPI0> = SCREEN.init(
@@ -108,22 +114,18 @@ macro_rules! init {
             Irqs,
         ));
 
-        static STORAGE: StaticCell<Storage<'static, SPI0>> = StaticCell::new();
-        let storage: &'static Storage<'static, SPI0> =
-            STORAGE.init(Storage::new(spi, $p.PIN_21).await.unwrap());
+        let button_l_up = $crate::button!($spawner, $p.PIN_5);
+        let button_l_left = $crate::button!($spawner, $p.PIN_6);
+        let button_l_down = $crate::button!($spawner, $p.PIN_7);
+        let button_l_right = $crate::button!($spawner, $p.PIN_8);
 
-        let button_l_up = button!($spawner, $p.PIN_5);
-        let button_l_left = button!($spawner, $p.PIN_6);
-        let button_l_down = button!($spawner, $p.PIN_7);
-        let button_l_right = button!($spawner, $p.PIN_8);
+        let button_r_up = $crate::button!($spawner, $p.PIN_12);
+        let button_r_left = $crate::button!($spawner, $p.PIN_13);
+        let button_r_down = $crate::button!($spawner, $p.PIN_14);
+        let button_r_right = $crate::button!($spawner, $p.PIN_15);
 
-        let button_r_up = button!($spawner, $p.PIN_12);
-        let button_r_left = button!($spawner, $p.PIN_13);
-        let button_r_down = button!($spawner, $p.PIN_14);
-        let button_r_right = button!($spawner, $p.PIN_15);
-
-        let led_left = pwm_led_a!($spawner, $p.PWM_SLICE6, $p.PIN_28);
-        let led_right = pwm_led_a!($spawner, $p.PWM_SLICE2, $p.PIN_4);
+        let led_left = $crate::pwm_led_a!($spawner, $p.PWM_SLICE6, $p.PIN_28);
+        let led_right = $crate::pwm_led_a!($spawner, $p.PWM_SLICE2, $p.PIN_4);
 
         (
             watchdog,
