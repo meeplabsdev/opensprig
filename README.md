@@ -1,3 +1,5 @@
+## IF YOU ARE REVIEWING THIS, THE PROJECT + README IS ON THE [RUST BRANCH](https://github.com/meeplabsdev/opensprig/tree/rust)
+
 # opensprig
 
 <img width="1920" height="1080" alt="frame_73" src="https://github.com/user-attachments/assets/be8c0990-6044-48b6-9b5f-5439ac825ea1" />
