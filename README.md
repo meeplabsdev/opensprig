@@ -21,6 +21,12 @@ It also comes with some examples to show off these features:
 - blink - simple blink for the pico builtin LED
 - hardware_checker - displays pressed button on screen, flashes LEDs, plays audio read from the SD card, writes "Hello, world!" to the screen using custom parsed font
 
+Here's a quick demo video of the hardware_checker example:
+
+https://github.com/user-attachments/assets/c525c0b9-f39e-4c61-80ba-acc5e841e5ce
+
+
+
 ## Flashing
 First you must obtain a build of the firmware. There are two ways to do this:
 
