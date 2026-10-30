@@ -1,3 +1,5 @@
+## IF YOU ARE A REVIEWER, YES IT HAS RELEASES, BUT NOT UNDER GITHUB RELEASES YOU NEED TO GO TO THE BUILD ARTIFACTS [HERE](https://nightly.link/meeplabsdev/opensprig/workflows/release/rust/firmware.zip)
+
 # opensprig
 
 <img width="1920" height="1080" alt="frame_73" src="https://github.com/user-attachments/assets/be8c0990-6044-48b6-9b5f-5439ac825ea1" />
