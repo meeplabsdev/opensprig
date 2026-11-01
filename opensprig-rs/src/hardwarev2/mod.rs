@@ -1,19 +1,31 @@
+mod button;
 mod screen;
 
+// TODO: this will move into the Sprig struct eventually
+pub use button::{Button, ButtonState};
 pub use screen::Screen;
 
-// pub struct Sprig<'a> {
-//     screen: Screen<'a, SPI0>,
-// }
+use crate::types::Result;
+use embassy_rp::spi;
 
-// impl Sprig<'_> {
-//     pub async fn new() -> Result<Self> {
-//         let spi = Spi::new(
-//                 $p.SPI0, $p.PIN_18, $p.PIN_19, $p.PIN_16, $p.DMA_CH2, $p.DMA_CH3, Irqs, spi_config,
-//             );
+pub struct Sprig<'a, S>
+where
+    S: spi::Instance,
+{
+    screen: Option<Screen<'a, S>>,
+}
 
-//         let screen = Screen::new(spi, cs, dc, rst, backlight).await?;
+impl<S> Sprig<'_, S>
+where
+    S: spi::Instance,
+{
+    pub async fn new() -> Result<Self> {
+        Ok(Self { screen: None })
+    }
 
-//         Ok(Self { screen })
-//     }
-// }
+    pub fn screen(self) -> Result<Self> {
+        // TODO
+
+        Ok(self)
+    }
+}
