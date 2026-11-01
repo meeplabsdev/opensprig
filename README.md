@@ -35,6 +35,7 @@ You can flash the firmware like any normal pico firmware, for example: `probe-rs
 The firmware is now successfully written to the pico, but booting will currently show no options on the screen. This is because no applications are present on the SD card. Prepare an SD card in the FAT32 format and create a directory `/program/`, placing the built applications (`name.bin`) here. Plug the SD into the sprig (the slot is in the top of the screen) and reboot it. The applications should be present in a list. It can be navigated using using the left dpad "up" and "down", and selected using the right dpad "left". When a program selected, it will reboot into the program. On the next reboot, it will return to the main firmware.
 
 > Note: to use hardware checker example, the SD card must have the `/audio/believer.pcm` file, which can be obtained with the command `ffmpeg -i believer.flac -ar 24000 -ac 1 -f u16le -acodec pcm_u16le believer.pcm`.
+> Note: to use the badapple example, the SD card must have the `/video/badapple.raw` file, which can be obtained with the command `ffmpeg -i badapple.mp4 -vf scale=160:128 -c:v rawvideo -f rawvideo -pix_fmt bgr565le badapple.raw`.
 
 ## Development
 The project is structured into a cargo workspace. The main firmware is present under `/firmware/`, and the main library under `/opensprig-rs/`. Each application is under `/parts/name/`. To build, follow the instructions above in the **Flashing** section. No AI pull requests will be accepted.
