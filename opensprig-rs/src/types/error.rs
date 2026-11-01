@@ -114,20 +114,20 @@ where
     }
 }
 
-// pub trait Context<T> {
-//     fn context<C>(self, context: C) -> Result<T>
-//     where
-//         C: Display + Send + Sync + 'static;
-// }
+pub trait Context<T> {
+    fn context<C>(self, context: C) -> Result<T>
+    where
+        C: Display + Debug + Send + Sync + 'static;
+}
 
-// impl<T> Context<T> for Option<T> {
-//     fn context<C>(self, context: C) -> Result<T>
-//     where
-//         C: Display + Send + Sync + 'static,
-//     {
-//         match self {
-//             Some(ok) => Ok(ok),
-//             None => error!(context),
-//         }
-//     }
-// }
+impl<T> Context<T> for Option<T> {
+    fn context<C>(self, context: C) -> Result<T>
+    where
+        C: Display + Debug + Send + Sync + 'static,
+    {
+        match self {
+            Some(ok) => Ok(ok),
+            None => Err(Error::msg(context)),
+        }
+    }
+}
