@@ -5,6 +5,9 @@ pub struct Colour {
 }
 
 impl Colour {
+    pub const WHITE: Self = Self::new(255, 255, 255);
+    pub const BLACK: Self = Self::new(0, 0, 0);
+
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
@@ -15,9 +18,9 @@ impl Colour {
 }
 
 pub fn rgb(r: u8, g: u8, b: u8) -> u16 {
-    let r = ((r as f32 / 255f32) * 31f32) as u8;
-    let b = ((b as f32 / 255f32) * 31f32) as u8;
-    let g = ((g as f32 / 255f32) * 63f32) as u8;
+    let r = (r >> 3) as u16;
+    let g = (g >> 2) as u16;
+    let b = (b >> 3) as u16;
 
-    ((r as u16 & 0b11111000) << 8) | ((b as u16 & 0b11111100) << 3) | (g as u16 >> 3)
+    (b << 11) | (g << 5) | r
 }
