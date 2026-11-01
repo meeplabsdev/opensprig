@@ -200,27 +200,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "chat"
-version = "0.1.0"
-dependencies = [
- "cortex-m",
- "cortex-m-rt",
- "cyw43",
- "cyw43-pio",
- "defmt 1.0.1",
- "defmt-rtt",
- "embassy-executor",
- "embassy-rp",
- "embassy-sync 0.7.2 (git+https://github.com/embassy-rs/embassy.git?rev=251e52f)",
- "embassy-time",
- "embedded-alloc",
- "opensprig-rs",
- "panic-probe",
- "portable-atomic",
- "static_cell",
-]
-
-[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,6 +1186,21 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
+
+[[package]]
+name = "newhardware"
+version = "0.1.0"
+dependencies = [
+ "cortex-m-rt",
+ "defmt 1.0.1",
+ "defmt-rtt",
+ "embassy-executor",
+ "embassy-rp",
+ "embedded-alloc",
+ "opensprig-rs",
+ "panic-probe",
+ "portable-atomic",
+]
 
 [[package]]
 name = "nu-ansi-term"
