@@ -1,3 +1,5 @@
+## IF YOU ARE A REVIEWER, YES IT HAS RELEASES, BUT NOT UNDER GITHUB RELEASES YOU NEED TO GO TO THE BUILD ARTIFACTS [HERE](https://nightly.link/meeplabsdev/opensprig/workflows/release/rust/firmware.zip)
+
 # opensprig
 
 <img width="1920" height="1080" alt="frame_73" src="https://github.com/user-attachments/assets/be8c0990-6044-48b6-9b5f-5439ac825ea1" />
@@ -18,6 +20,12 @@ opensprig is a project designed to make it easier to write much lower level apps
 It also comes with some examples to show off these features:
 - blink - simple blink for the pico builtin LED
 - hardware_checker - displays pressed button on screen, flashes LEDs, plays audio read from the SD card, writes "Hello, world!" to the screen using custom parsed font
+
+Here's a quick demo video of the hardware_checker example:
+
+https://github.com/user-attachments/assets/c525c0b9-f39e-4c61-80ba-acc5e841e5ce
+
+
 
 ## Flashing
 First you must obtain a build of the firmware. There are two ways to do this:
