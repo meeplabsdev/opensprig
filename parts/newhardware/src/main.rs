@@ -2,11 +2,11 @@
 #![no_main]
 extern crate alloc;
 
-use alloc::format;
 use defmt_rtt as _;
 use embassy_rp as _;
 use panic_probe as _;
 
+use alloc::{format, string::String, vec};
 use embassy_executor::Spawner;
 use embassy_rp::{
     bind_interrupts, dma,
@@ -16,7 +16,7 @@ use embassy_rp::{
 };
 use embedded_alloc::LlffHeap as Heap;
 use opensprig_rs::{
-    font,
+    font::{self},
     hardwarev2::{Button, ButtonState, Screen},
     types::Colour,
 };
@@ -50,47 +50,29 @@ async fn main(_spawner: Spawner) {
 
     let button = Button::new(p.PIN_6).unwrap();
 
+    let mut logs = vec![];
+
     loop {
         match button.next().await {
-            ButtonState::Released { duration } => {
-                screen
-                    .rectangle(4, 4, 156, 6, &Colour::BLACK)
-                    .await
-                    .unwrap();
+            ButtonState::Released { duration } => logs.push(format!("released after {duration}ms")),
+            ButtonState::Pressed => logs.push(String::from("pressed")),
+            ButtonState::Held => logs.push(String::from("held")),
+        }
 
-                screen
-                    .text(
-                        4,
-                        4,
-                        &format!("released after {duration}ms"),
-                        fourbysix,
-                        &Colour::WHITE,
-                    )
-                    .await
-                    .unwrap();
-            }
-            ButtonState::Pressed => {
-                screen
-                    .rectangle(4, 4, 156, 6, &Colour::BLACK)
-                    .await
-                    .unwrap();
+        if logs.len() > 15 {
+            logs.remove(0);
+        }
 
-                screen
-                    .text(4, 4, "pressed", fourbysix, &Colour::WHITE)
-                    .await
-                    .unwrap();
-            }
-            ButtonState::Held => {
-                screen
-                    .rectangle(4, 4, 156, 6, &Colour::BLACK)
-                    .await
-                    .unwrap();
+        screen
+            .rectangle(4, 4, 156, 124, &Colour::BLACK)
+            .await
+            .unwrap();
 
-                screen
-                    .text(4, 4, "held", fourbysix, &Colour::WHITE)
-                    .await
-                    .unwrap();
-            }
+        for (i, log) in logs.iter().enumerate() {
+            screen
+                .text(4, 4 + 8 * i, &log, fourbysix, &Colour::WHITE)
+                .await
+                .unwrap();
         }
     }
 }

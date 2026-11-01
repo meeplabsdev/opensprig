@@ -48,11 +48,7 @@ where
     }
 
     pub async fn pixel(&self, x: usize, y: usize, colour: &Colour) -> Result<()> {
-        let mut raw = self.raw.lock().await;
-        raw.window(x, y, 1, 1).await?;
-        raw.frame(&[colour.as_16bit()]).await?;
-
-        Ok(())
+        self.raw(x, y, 1, 1, &[colour.as_16bit()]).await
     }
 
     pub async fn rectangle(
@@ -75,8 +71,7 @@ where
             .await
     }
 
-    // TODO: this is really inefficient (locking on each iteration + sending pixels one by one on a new command each time)
-    pub async fn glyph(
+    async fn glyph(
         &self,
         x: usize,
         y: usize,
@@ -84,18 +79,18 @@ where
         glyph: &Glyph,
         colour: &Colour,
     ) -> Result<()> {
+        let mut raw = self.raw.lock().await;
         let left = x as isize + glyph.offset.0;
         let top = y as isize + font.ascent - glyph.offset.1 - glyph.size.1 as isize;
 
         for dy in 0..glyph.size.1 {
             for dx in 0..glyph.size.0 {
                 if font.pixel(glyph, dx, dy)? {
-                    self.pixel(
-                        (left + dx as isize).max(0) as usize,
-                        (top + dy as isize).max(0) as usize,
-                        colour,
-                    )
-                    .await?;
+                    let cx = (left + dx as isize).max(0) as usize;
+                    let cy = (top + dy as isize).max(0) as usize;
+
+                    raw.window(cx, cy, 1, 1).await?;
+                    raw.frame(&[colour.as_16bit()]).await?;
                 }
             }
         }
@@ -111,6 +106,8 @@ where
         font: &Font<'a>,
         colour: &Colour,
     ) -> Result<()> {
+        // self.raw.lock().await.skip_spi = true;
+
         let mut cx = x;
         for c in content.chars() {
             let glyph = font.glyph(c).ok_or(Error::msg("failed to get glyph"))?;
@@ -118,6 +115,13 @@ where
             self.glyph(cx, y, font, glyph, colour).await?;
             cx += glyph.dwidth.0;
         }
+
+        // let mut raw = self.raw.lock().await;
+        // let pixels = &raw.frame.pixels.clone();
+
+        // raw.skip_spi = false;
+        // raw.window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT).await?;
+        // raw.frame(pixels).await?;
 
         Ok(())
     }

@@ -1,6 +1,7 @@
 use crate::types::Result;
-use bdf_parser::Font;
 use embassy_sync::once_lock::OnceLock;
+
+pub use bdf_parser::Font;
 
 static BDF_FOURBYSIX: OnceLock<Font> = OnceLock::new();
 static BDF_SIXBYTEN: OnceLock<Font> = OnceLock::new();
