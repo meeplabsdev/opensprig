@@ -366,6 +366,4 @@ where
     // pub fn read_id(&mut self) {
     //     // TODO: RDDID command
     // }
-
-    // TODO: raw memory read+write
 }
