@@ -1,10 +1,12 @@
 #![no_std]
 #![no_main]
+extern crate alloc;
 
 mod mutex_device;
 
 pub mod font;
 pub mod hardware;
+pub mod hardwarev2;
 pub mod types;
 pub mod ui;
 
@@ -89,10 +91,6 @@ macro_rules! init {
                 $p.SPI0, $p.PIN_18, $p.PIN_19, $p.PIN_16, $p.DMA_CH2, $p.DMA_CH3, Irqs, spi_config,
             )));
 
-        static STORAGE: StaticCell<Storage<'static, SPI0>> = StaticCell::new();
-        let storage: &'static Storage<'static, SPI0> =
-            STORAGE.init(Storage::new(spi, $p.PIN_21).await.unwrap());
-
         static SCREEN: StaticCell<Screen<'static, SPI0>> = StaticCell::new();
         let screen: &'static Screen<'static, SPI0> = SCREEN.init(
             Screen::new(spi, $p.PIN_20, $p.PIN_22, $p.PIN_26, $p.PIN_17)
@@ -113,6 +111,13 @@ macro_rules! init {
             $p.DMA_CH1,
             Irqs,
         ));
+
+        static STORAGE: StaticCell<Storage<'static, SPI0>> = StaticCell::new();
+        let storage: &'static Storage<'static, SPI0> =
+            STORAGE.init(Storage::new(spi, $p.PIN_21).await.unwrap());
+
+        // static DRAW: StaticCell<Draw<'static, SPI0>> = StaticCell::new();
+        // let draw: &'static Draw<'static, SPI0> = DRAW.init(Draw::new(screen));
 
         let button_l_up = $crate::button!($spawner, $p.PIN_5);
         let button_l_left = $crate::button!($spawner, $p.PIN_6);
