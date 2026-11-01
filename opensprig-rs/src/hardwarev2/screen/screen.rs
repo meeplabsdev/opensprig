@@ -78,22 +78,47 @@ where
         font: &Font<'a>,
         glyph: &Glyph,
         colour: &Colour,
+        background: &Colour,
     ) -> Result<()> {
         let mut raw = self.raw.lock().await;
         let left = x as isize + glyph.offset.0;
         let top = y as isize + font.ascent - glyph.offset.1 - glyph.size.1 as isize;
 
-        for dy in 0..glyph.size.1 {
-            for dx in 0..glyph.size.0 {
-                if font.pixel(glyph, dx, dy)? {
-                    let cx = (left + dx as isize).max(0) as usize;
-                    let cy = (top + dy as isize).max(0) as usize;
+        raw.window(
+            left.max(0) as usize,
+            top.max(0) as usize,
+            glyph.size.0,
+            glyph.size.1,
+        )
+        .await?;
 
-                    raw.window(cx, cy, 1, 1).await?;
-                    raw.frame(&[colour.as_16bit()]).await?;
-                }
+        let fg = colour.as_16bit();
+        let bg = background.as_16bit();
+        raw.pframe(|index| {
+            let y = index / glyph.size.0;
+            let x = index % glyph.size.0;
+
+            if let Ok(p) = font.pixel(glyph, x, y)
+                && p
+            {
+                return fg;
             }
-        }
+
+            bg
+        })
+        .await?;
+
+        // for dy in 0..glyph.size.1 {
+        //     for dx in 0..glyph.size.0 {
+        //         if font.pixel(glyph, dx, dy)? {
+        //             let cx = (left + dx as isize).max(0) as usize;
+        //             let cy = (top + dy as isize).max(0) as usize;
+
+        //             // window used to be here
+        //             raw.frame(&[colour.as_16bit()]).await?;
+        //         }
+        //     }
+        // }
 
         Ok(())
     }
@@ -105,23 +130,15 @@ where
         content: &str,
         font: &Font<'a>,
         colour: &Colour,
+        background: &Colour,
     ) -> Result<()> {
-        // self.raw.lock().await.skip_spi = true;
-
         let mut cx = x;
         for c in content.chars() {
             let glyph = font.glyph(c).ok_or(Error::msg("failed to get glyph"))?;
 
-            self.glyph(cx, y, font, glyph, colour).await?;
+            self.glyph(cx, y, font, glyph, colour, background).await?;
             cx += glyph.dwidth.0;
         }
-
-        // let mut raw = self.raw.lock().await;
-        // let pixels = &raw.frame.pixels.clone();
-
-        // raw.skip_spi = false;
-        // raw.window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT).await?;
-        // raw.frame(pixels).await?;
 
         Ok(())
     }

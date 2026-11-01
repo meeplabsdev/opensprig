@@ -1,6 +1,6 @@
 use crate::{
     err,
-    hardwarev2::screen::{SCREEN_HEIGHT, SCREEN_WIDTH, frame::Frame},
+    hardwarev2::screen::{SCREEN_HEIGHT, SCREEN_WIDTH},
     types::{DebugError, Result},
 };
 use embassy_rp::{
@@ -80,8 +80,6 @@ where
     rst: Output<'a>,
     spi: Spi<'a, T, Async>,
     window: (usize, usize, usize, usize),
-    pub frame: Frame,
-    pub skip_spi: bool,
 }
 
 impl<'a, T> RawScreen<'a, T>
@@ -102,8 +100,6 @@ where
             rst: Output::new(rst, Level::Low),
             spi,
             window: (0, 0, 0, 0),
-            frame: Frame::new(),
-            skip_spi: false,
         };
 
         Ok(this)
@@ -269,14 +265,11 @@ where
             return err!("window is out of screen bounds");
         }
 
-        self.frame.window(x, y, w, h)?;
-        if !self.skip_spi {
-            self.write_command(st7735::RASET).await?;
-            self.write_data(&[0, x as u8, 0, (x + w - 1) as u8]).await?;
-            self.write_command(st7735::CASET).await?;
-            self.write_data(&[0, y as u8, 0, (y + h - 1) as u8]).await?;
-            self.window = (x, y, w, h);
-        }
+        self.write_command(st7735::RASET).await?;
+        self.write_data(&[0, x as u8, 0, (x + w - 1) as u8]).await?;
+        self.write_command(st7735::CASET).await?;
+        self.write_data(&[0, y as u8, 0, (y + h - 1) as u8]).await?;
+        self.window = (x, y, w, h);
 
         Ok(())
     }
@@ -287,12 +280,9 @@ where
             return err!("pixels do not match window");
         }
 
-        self.frame.ram_wr();
-        if !self.skip_spi {
-            self.cs_low().await;
-            self.spi_command(st7735::RAMWR).await?;
-            self.dc_high().await;
-        }
+        self.cs_low().await;
+        self.spi_command(st7735::RAMWR).await?;
+        self.dc_high().await;
 
         let mut chunk = [0u8; 64];
         for block in pixels.chunks(32) {
@@ -302,27 +292,18 @@ where
             }
 
             let n = block.len() * 2;
-            self.frame.ram_data(&chunk[..n]);
-
-            if !self.skip_spi {
-                self.spi.write(&chunk[..n]).await.map_err(DebugError)?;
-            }
+            self.spi.write(&chunk[..n]).await.map_err(DebugError)?;
         }
 
-        if !self.skip_spi {
-            self.cs_high().await;
-        }
+        self.cs_high().await;
 
         Ok(())
     }
 
     pub async fn cframe(&mut self, pixel: u16) -> Result<()> {
-        self.frame.ram_wr();
-        if !self.skip_spi {
-            self.cs_low().await;
-            self.spi_command(st7735::RAMWR).await?;
-            self.dc_high().await;
-        }
+        self.cs_low().await;
+        self.spi_command(st7735::RAMWR).await?;
+        self.dc_high().await;
 
         let high = (pixel >> 8) as u8;
         let low = (pixel & 0xff) as u8;
@@ -335,26 +316,18 @@ where
         }
 
         while count >= 64 {
-            self.frame.ram_data(&chunk);
-            if !self.skip_spi {
-                self.spi.write(&chunk).await.map_err(DebugError)?;
-            }
+            self.spi.write(&chunk).await.map_err(DebugError)?;
             count -= 64;
         }
 
         if count > 0 {
-            self.frame.ram_data(&chunk[..count as usize]);
-            if !self.skip_spi {
-                self.spi
-                    .write(&chunk[..count as usize])
-                    .await
-                    .map_err(DebugError)?;
-            }
+            self.spi
+                .write(&chunk[..count as usize])
+                .await
+                .map_err(DebugError)?;
         }
 
-        if !self.skip_spi {
-            self.cs_high().await;
-        }
+        self.cs_high().await;
 
         Ok(())
     }
@@ -363,12 +336,9 @@ where
     where
         P: FnMut(usize) -> u16,
     {
-        self.frame.ram_wr();
-        if !self.skip_spi {
-            self.cs_low().await;
-            self.spi_command(st7735::RAMWR).await?;
-            self.dc_high().await;
-        }
+        self.cs_low().await;
+        self.spi_command(st7735::RAMWR).await?;
+        self.dc_high().await;
 
         let count = self.window.2 * self.window.3;
         let mut index = 0;
@@ -385,15 +355,10 @@ where
                 index += 1;
             }
 
-            self.frame.ram_data(&chunk[..i * 2]);
-            if !self.skip_spi {
-                self.spi.write(&chunk[..i * 2]).await.map_err(DebugError)?;
-            }
+            self.spi.write(&chunk[..i * 2]).await.map_err(DebugError)?;
         }
 
-        if !self.skip_spi {
-            self.cs_high().await;
-        }
+        self.cs_high().await;
 
         Ok(())
     }

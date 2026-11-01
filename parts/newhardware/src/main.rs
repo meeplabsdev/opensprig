@@ -70,7 +70,14 @@ async fn main(_spawner: Spawner) {
 
         for (i, log) in logs.iter().enumerate() {
             screen
-                .text(4, 4 + 8 * i, &log, fourbysix, &Colour::WHITE)
+                .text(
+                    4,
+                    4 + 8 * i,
+                    &log,
+                    fourbysix,
+                    &Colour::WHITE,
+                    &Colour::BLACK,
+                )
                 .await
                 .unwrap();
         }
